@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://u2.example/schema/shipconfig-v0.6.json",
+  "title": "U2 ShipConfig v0.6",
+  "type": "object",
+  "required": [
+    "meta",
+    "classification",
+    "geometry",
+    "mass",
+    "signatures",
+    "performance",
+    "propulsion",
+    "payload",
+    "weapons",
+    "assist"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "required": [
+        "size",
+        "type",
+        "size_type",
+        "stealth"
+      ],
+      "properties": {
+        "size": {
+          "enum": [
+            "snub",
+            "small",
+            "medium",
+            "heavy",
+            "capital"
+          ]
+        },
+        "type": {
+          "enum": [
+            "shuttle",
+            "fighter",
+            "interceptor",
+            "gunship",
+            "bomber",
+            "dropship",
+            "courier",
+            "freighter",
+            "exploration",
+            "passenger",
+            "miner",
+            "tanker",
+            "salvager",
+            "repair",
+            "recon",
+            "corvette",
+            "frigate",
+            "destroyer",
+            "carrier",
+            "dreadnought"
+          ]
+        },
+        "size_type": {
+          "type": "string"
+        },
+        "stealth": {
+          "enum": [
+            "standard",
+            "stealth"
+          ]
+        },
+        "variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "properties": {
+        "length_m": {
+          "type": "number"
+        },
+        "width_m": {
+          "type": "number"
+        },
+        "height_m": {
+          "type": "number"
+        }
+      }
+    },
+    "mass": {
+      "type": "object",
+      "properties": {
+        "dry_t": {
+          "type": "number"
+        }
+      }
+    },
+    "inertia_opt": {
+      "type": "object",
+      "properties": {
+        "Ixx": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Iyy": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Izz": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "signatures": {
+      "type": "object",
+      "properties": {
+        "IR": {
+          "type": "number"
+        },
+        "EM": {
+          "type": "number"
+        },
+        "CS": {
+          "type": "number"
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "scm_mps": {
+          "type": "number"
+        },
+        "vmax_mps": {
+          "type": "number"
+        },
+        "accel_fwd_mps2": {
+          "type": "number"
+        },
+        "strafe_mps2": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
+          }
+        },
+        "angular_dps": {
+          "type": "object",
+          "properties": {
+            "pitch": {
+              "type": "number"
+            },
+            "yaw": {
+              "type": "number"
+            },
+            "roll": {
+              "type": "number"
+            }
+          }
+        },
+        "angular_accel_opt": {
+          "type": "object",
+          "properties": {
+            "pitch": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "yaw": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "roll": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "propulsion": {
+      "type": "object",
+      "properties": {
+        "main_thrust_MN": {
+          "type": "number"
+        },
+        "rcs_budget_MN": {
+          "type": "number"
+        }
+      }
+    },
+    "power_opt": {
+      "type": "object",
+      "properties": {
+        "reactor_MW": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "cooling_MW": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "cargo_scu": {
+          "type": "number"
+        },
+        "crew": {
+          "type": "string"
+        }
+      }
+    },
+    "hardpoints_opt": {
+      "type": "object",
+      "properties": {
+        "fixed": {
+          "type": "array"
+        },
+        "gimbals": {
+          "type": "array"
+        },
+        "turrets": {
+          "type": "array"
+        },
+        "missiles": {
+          "type": "array"
+        }
+      }
+    },
+    "weapons": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string"
+        }
+      }
+    },
+    "assist": {
+      "type": "object",
+      "required": [
+        "preset",
+        "slip_lim_deg",
+        "stab_gain",
+        "oversteer_bias",
+        "cap_main_coupled",
+        "speed_limiter_ratio",
+        "brake_g_sustain",
+        "brake_g_boost",
+        "boost_duration_s",
+        "boost_cooldown_s"
+      ],
+      "properties": {
+        "preset": {
+          "enum": [
+            "Balanced",
+            "Sport",
+            "Rally",
+            "Muscle",
+            "F1",
+            "Industrial",
+            "Truck",
+            "Warship",
+            "Liner",
+            "Recon"
+          ]
+        },
+        "slip_lim_deg": {
+          "type": "number"
+        },
+        "stab_gain": {
+          "type": "number"
+        },
+        "oversteer_bias": {
+          "type": "number"
+        },
+        "cap_main_coupled": {
+          "type": "number"
+        },
+        "speed_limiter_ratio": {
+          "type": "number"
+        },
+        "brake_g_sustain": {
+          "type": "number"
+        },
+        "brake_g_boost": {
+          "type": "number"
+        },
+        "boost_duration_s": {
+          "type": "number"
+        },
+        "boost_cooldown_s": {
+          "type": "number"
+        }
+      }
+    },
+    "legacy_v053": {
+      "type": "object",
+      "description": "Bag to preserve any fields from ShipConfig v0.5.3 without loss"
+    },
+    "notes_opt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

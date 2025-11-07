@@ -1,0 +1,28 @@
+{
+  "meta": { 
+    "id": "fighter_v01", 
+    "class": "fighter", 
+    "name": "U2 Test Fighter", 
+    "version": "0.5.3", 
+    "author": "U2 Team" 
+  },
+  "mass": { "mass_kg": 10000, "inertia_override": null },
+  "geometry": { 
+    "bbox_m": { "width": 25.0, "length": 20.5 }, 
+    "hull_radius_m": 16.17 
+  },
+  "sprite": { 
+    "path": "assets/ships/fighter_top.png", 
+    "size_px": { "w": 512, "h": 512 }, 
+    "pivot_px": { "x": 256, "y": 256 }, 
+    "orientation": "nose_right", 
+    "alpha_thr": 16, 
+    "m_per_px": 0.05 
+  },
+  "propulsion": { "main_engine_thrust_max_N": 1100000 },
+  "rcs": { 
+    "strafe_thrust_N": 160000, 
+    "turn_alpha_max_radps2": 1.8, 
+    "turn_omega_max_radps": 2.0 
+  }
+}

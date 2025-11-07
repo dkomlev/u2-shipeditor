@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "id": "u2_small_stealth_recon_001",
+    "name": "Small Stealth Recon",
+    "version": "0.6.0"
+  },
+  "classification": {
+    "size": "small",
+    "type": "recon",
+    "size_type": "small recon",
+    "stealth": "stealth",
+    "variant": null
+  },
+  "geometry": {
+    "length_m": 26,
+    "width_m": 17,
+    "height_m": 6
+  },
+  "mass": {
+    "dry_t": 65
+  },
+  "signatures": {
+    "IR": 1,
+    "EM": 1,
+    "CS": 1
+  },
+  "performance": {
+    "scm_mps": 250,
+    "vmax_mps": 1200,
+    "accel_fwd_mps2": 60,
+    "strafe_mps2": {
+      "x": 65,
+      "y": 65,
+      "z": 65
+    },
+    "angular_dps": {
+      "pitch": 90,
+      "yaw": 75,
+      "roll": 110
+    }
+  },
+  "propulsion": {
+    "main_thrust_MN": 3.9,
+    "rcs_budget_MN": 1.2
+  },
+  "payload": {
+    "cargo_scu": 8,
+    "crew": "1-2"
+  },
+  "weapons": {
+    "summary": "light recon fit"
+  },
+  "assist": {
+    "preset": "Recon",
+    "slip_lim_deg": 6,
+    "stab_gain": 0.98,
+    "oversteer_bias": 0.0,
+    "cap_main_coupled": 0.4,
+    "speed_limiter_ratio": 0.65,
+    "brake_g_sustain": 3.5,
+    "brake_g_boost": 5.0,
+    "boost_duration_s": 3.0,
+    "boost_cooldown_s": 12
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "id": "u2_medium_miner_001",
+    "name": "Medium Miner Mk.I",
+    "version": "0.6.0"
+  },
+  "classification": {
+    "size": "medium",
+    "type": "miner",
+    "size_type": "medium miner",
+    "stealth": "standard",
+    "variant": null
+  },
+  "geometry": {
+    "length_m": 38,
+    "width_m": 30,
+    "height_m": 12
+  },
+  "mass": {
+    "dry_t": 160
+  },
+  "signatures": {
+    "IR": 3,
+    "EM": 3,
+    "CS": 3
+  },
+  "performance": {
+    "scm_mps": 160,
+    "vmax_mps": 900,
+    "accel_fwd_mps2": 35,
+    "strafe_mps2": {
+      "x": 40,
+      "y": 40,
+      "z": 40
+    },
+    "angular_dps": {
+      "pitch": 45,
+      "yaw": 40,
+      "roll": 75
+    }
+  },
+  "propulsion": {
+    "main_thrust_MN": 5.6,
+    "rcs_budget_MN": 1.8
+  },
+  "payload": {
+    "cargo_scu": 96,
+    "crew": "2-3"
+  },
+  "weapons": {
+    "summary": "3xmining S2; 2xdefense S2"
+  },
+  "assist": {
+    "preset": "Industrial",
+    "slip_lim_deg": 10,
+    "stab_gain": 0.92,
+    "oversteer_bias": -0.15,
+    "cap_main_coupled": 0.65,
+    "speed_limiter_ratio": 0.65,
+    "brake_g_sustain": 3.5,
+    "brake_g_boost": 5.5,
+    "boost_duration_s": 4.0,
+    "boost_cooldown_s": 18.0
+  }
+}

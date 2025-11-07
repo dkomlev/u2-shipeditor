@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>U2 Ship Architect v0.6</title>
+  <link rel="stylesheet" href="./css/app.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero card">
+      <div>
+        <div class="section-title">U2 Ship Architect v0.6</div>
+        <div class="hero__meta">
+          <label class="field">
+            <span>Название корабля</span>
+            <input type="text" data-bind="meta.name" placeholder="Имя" />
+          </label>
+          <label class="field">
+            <span>ID</span>
+            <input type="text" data-bind="meta.id" placeholder="uuid" />
+          </label>
+          <label class="field">
+            <span>Версия конфига</span>
+            <input type="text" data-bind="meta.version" placeholder="0.6.0" />
+          </label>
+          <label class="field">
+            <span>Автор</span>
+            <input type="text" data-bind="meta.author" placeholder="U2 FlightLab" />
+          </label>
+          <label class="field">
+            <span>Вариант / подпись</span>
+            <input type="text" data-bind="classification.variant" placeholder="Blockade runner" />
+          </label>
+        </div>
+        <div class="chips-line">
+          <span class="chip" id="sizeTypeChip" data-text="classification.size_type">small fighter</span>
+          <span class="chip chip--ok" id="envelopeChip">Envelope ok</span>
+          <span class="chip" id="presetChip">Preset</span>
+        </div>
+      </div>
+      <div class="hero__actions">
+        <button class="btn btn-ghost" id="autoBtn">Auto</button>
+        <button class="btn btn-outline" id="recommendBtn">Recommend</button>
+        <button class="btn btn-primary" id="nominalBtn">Архетип: заполнить</button>
+        <button class="btn btn-danger" id="resetBtn">Сброс</button>
+      </div>
+      <div class="hero__hints">
+        <span><b>Auto</b> — обновляет размер, тягу, радиус и массу по габаритам.</span>
+        <span><b>Recommend</b> — показывает подсказки для выравнивания с архетипом.</span>
+        <span><b>Архетип: заполнить</b> — перезаписывает все поля номиналами.</span>
+        <span><b>Сброс</b> — возвращает конфиг к чистому шаблону v0.6.</span>
+      </div>
+    </header>
+
+    <section class="hero-secondary">
+      <article class="card mini-card">
+        <div class="card-toolbar">
+          <div class="section-title">Контроль целостности</div>
+          <button class="info-btn" data-info="Проверяет габариты, массу, тягу и ассист на соответствие форме и физике.">i</button>
+        </div>
+        <ul class="integrity-summary" id="integritySummary"></ul>
+      </article>
+
+      <article class="card mini-card">
+        <div class="card-toolbar">
+          <div class="section-title">Импорт / Экспорт</div>
+          <button class="info-btn" data-info="Работает с ShipConfig 0.5.3–0.6. Можно сразу загрузить из AppConfig.">i</button>
+        </div>
+        <div class="io-inline">
+          <input type="file" id="importFile" accept="application/json" />
+          <div class="actions-row">
+            <button class="btn btn-outline btn-small" id="importBtn">Импорт</button>
+            <button class="btn btn-outline btn-small" id="exportBtn">Экспорт</button>
+            <button class="btn btn-ghost btn-small" id="copyJson">Копировать JSON</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <main>
+      <section class="grid grid--primary">
+        <article class="card classification-card">
+          <div class="card-toolbar">
+            <div class="section-title">Класс и архетип</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Размер, тип и stealth влияют на габариты, массу и ассист. Auto size берёт размер из габаритов, архетип — подтягивает пресет.">i</button>
+              <button class="btn btn-ghost btn-small" id="autoSizeBtn">Auto size</button>
+              <button class="btn btn-outline btn-small" id="applyPresetBtn">Архетип ассиста</button>
+            </div>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>Размер</span>
+              <select id="sizeSelect" data-bind="classification.size"></select>
+            </label>
+            <label class="field">
+              <span>Тип</span>
+              <select id="typeSelect" data-bind="classification.type"></select>
+            </label>
+            <label class="field">
+              <span>Stealth</span>
+              <select id="stealthSelect" data-bind="classification.stealth">
+                <option value="standard">standard</option>
+                <option value="stealth">stealth</option>
+              </select>
+            </label>
+          </div>
+          <div class="card-subtitle">Рекомендованный пресет: <span id="suggestedPreset">Balanced</span></div>
+        </article>
+
+        <article class="card sprite-card">
+          <div class="card-toolbar">
+            <div class="section-title">Спрайт корабля</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Загрузите PNG/JPG (нос вправо). Scan sprite измеряет bbox по X (длина) и Y (ширина).">i</button>
+              <button class="btn btn-ghost btn-small" id="spriteScanBtn">Scan sprite</button>
+              <button class="btn btn-ghost btn-small" id="spriteDetachBtn">Убрать dataUrl</button>
+              <button class="btn btn-ghost btn-small" id="clearSprite">Очистить</button>
+            </div>
+          </div>
+          <div class="sprite-preview" id="spritePreview">
+            <span id="spritePlaceholder">Перетащите PNG/JPG или выберите файл</span>
+          </div>
+          <div class="sprite-meta">
+            <span id="spriteInfo">Нет спрайта</span>
+            <input type="file" id="spriteInput" accept="image/*" />
+          </div>
+          <label class="field">
+            <span>Путь ассета</span>
+            <input type="text" data-bind="media.sprite.path" placeholder="asstets/ships/fighter_top.png" />
+          </label>
+        </article>
+
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Габариты и масса</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Диаграмма AppConfig: X — длина (нос вправо), Y — ширина. Scan sprite держит эту ориентацию. Auto радиус считает hull_radius, Mass auto — массу.">i</button>
+              <button class="btn btn-ghost btn-small" id="geometryAutoBtn">Auto радиус</button>
+              <button class="btn btn-ghost btn-small" id="massAutoBtn">Auto масса</button>
+              <button class="btn btn-outline btn-small" id="geometryRecommendBtn">Архетип</button>
+            </div>
+          </div>
+          <div class="field-grid four">
+            <label class="field">
+              <span>Длина, м</span>
+              <input type="number" step="0.1" data-bind="geometry.length_m" />
+            </label>
+            <label class="field">
+              <span>Ширина, м</span>
+              <input type="number" step="0.1" data-bind="geometry.width_m" />
+            </label>
+            <label class="field">
+              <span>Высота, м</span>
+              <input type="number" step="0.1" data-bind="geometry.height_m" />
+            </label>
+            <label class="field">
+              <span>Радиус корпуса, м</span>
+              <input type="number" step="0.01" data-bind="geometry.hull_radius_m" />
+            </label>
+            <label class="field">
+              <span>Масса (сухая), т</span>
+              <input type="number" step="0.1" data-bind="mass.dry_t" />
+            </label>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Сигнатуры</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="IR/EM/CS управляют заметностью в AppConfig.">i</button>
+              <button class="btn btn-outline btn-small" id="signaturesRecommendBtn">Архетип</button>
+            </div>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>IR</span>
+              <input type="number" min="1" max="5" data-bind="signatures.IR" />
+            </label>
+            <label class="field">
+              <span>EM</span>
+              <input type="number" min="1" max="5" data-bind="signatures.EM" />
+            </label>
+            <label class="field">
+              <span>CS</span>
+              <input type="number" min="1" max="5" data-bind="signatures.CS" />
+            </label>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Производительность</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Universe Unlimited использует только ускорения и угловые скорости (без лимита SCM/Vmax). Auto расчёт берёт номиналы архетипа.">i</button>
+              <button class="btn btn-outline btn-small" id="performanceAutoBtn">Auto расчёт</button>
+            </div>
+          </div>
+          <div class="card-subtitle">Ускорения</div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>Продольное accel, м/с²</span>
+              <input type="number" step="0.1" data-bind="performance.accel_fwd_mps2" />
+            </label>
+            <label class="field">
+              <span>Strafe X</span>
+              <input type="number" step="0.1" data-bind="performance.strafe_mps2.x" />
+            </label>
+            <label class="field">
+              <span>Strafe Y</span>
+              <input type="number" step="0.1" data-bind="performance.strafe_mps2.y" />
+            </label>
+            <label class="field">
+              <span>Strafe Z</span>
+              <input type="number" step="0.1" data-bind="performance.strafe_mps2.z" />
+            </label>
+          </div>
+          <div class="card-subtitle">Угловые скорости</div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>Pitch</span>
+              <input type="number" step="0.1" data-bind="performance.angular_dps.pitch" />
+            </label>
+            <label class="field">
+              <span>Yaw</span>
+              <input type="number" step="0.1" data-bind="performance.angular_dps.yaw" />
+            </label>
+            <label class="field">
+              <span>Roll</span>
+              <input type="number" step="0.1" data-bind="performance.angular_dps.roll" />
+            </label>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Пропульсивная установка</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Auto тяга берёт массу и продольное ускорение. Archetype подтягивает номиналы.">i</button>
+              <button class="btn btn-ghost btn-small" id="autoPropulsionBtn">Auto тяга</button>
+              <button class="btn btn-outline btn-small" id="propulsionRecommendBtn">Архетип</button>
+            </div>
+          </div>
+          <div class="field-grid two">
+            <label class="field">
+              <span>Главная тяга, МН</span>
+              <input type="number" step="0.01" data-bind="propulsion.main_thrust_MN" />
+            </label>
+            <label class="field">
+              <span>RCS бюджет, МН</span>
+              <input type="number" step="0.01" data-bind="propulsion.rcs_budget_MN" />
+            </label>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Груз и вооружение</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Используйте экипаж и груз согласно ТЗ FlightTest.">i</button>
+              <button class="btn btn-outline btn-small" id="payloadRecommendBtn">Архетип</button>
+            </div>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>Груз, SCU</span>
+              <input type="number" step="1" data-bind="payload.cargo_scu" />
+            </label>
+            <label class="field">
+              <span>Экипаж</span>
+              <input type="text" data-bind="payload.crew" />
+            </label>
+            <label class="field">
+              <span>Вооружение</span>
+              <textarea data-bind="weapons.summary" placeholder="S3 turrets, torpedoes"></textarea>
+            </label>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Помощники пилота</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Preset подбирает handling в стиле архетипа. Значения g ограничиваются динамикой корабля.">i</button>
+              <button class="btn btn-outline btn-small" id="assistAutoBtn">Auto</button>
+            </div>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>Preset</span>
+              <select id="assistPreset" data-bind="assist.preset"></select>
+            </label>
+            <label class="field">
+              <span>slip_lim_deg</span>
+              <input type="number" step="0.1" data-bind="assist.slip_lim_deg" />
+            </label>
+            <label class="field">
+              <span>stab_gain</span>
+              <input type="number" step="0.01" data-bind="assist.stab_gain" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>oversteer_bias</span>
+              <input type="number" step="0.01" data-bind="assist.oversteer_bias" />
+            </label>
+            <label class="field">
+              <span>cap_main_coupled</span>
+              <input type="number" step="0.01" data-bind="assist.cap_main_coupled" />
+            </label>
+            <label class="field">
+              <span>speed_limiter_ratio</span>
+              <input type="number" step="0.01" data-bind="assist.speed_limiter_ratio" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>brake_g_sustain</span>
+              <input type="number" step="0.1" data-bind="assist.brake_g_sustain" />
+            </label>
+            <label class="field">
+              <span>brake_g_boost</span>
+              <input type="number" step="0.1" data-bind="assist.brake_g_boost" />
+            </label>
+            <label class="field">
+              <span>boost_duration_s</span>
+              <input type="number" step="0.1" data-bind="assist.boost_duration_s" />
+            </label>
+          </div>
+          <div class="field-grid two">
+            <label class="field">
+              <span>boost_cooldown_s</span>
+              <input type="number" step="0.1" data-bind="assist.boost_cooldown_s" />
+            </label>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Инерция и питание</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Auto расчёт считает моменты инерции блока и оценивает реактор/охлаждение.">i</button>
+              <button class="btn btn-ghost btn-small" id="inertiaAutoBtn">Auto расчёт</button>
+            </div>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>Ixx</span>
+              <input type="number" step="0.01" data-bind="inertia_opt.Ixx" />
+            </label>
+            <label class="field">
+              <span>Iyy</span>
+              <input type="number" step="0.01" data-bind="inertia_opt.Iyy" />
+            </label>
+            <label class="field">
+              <span>Izz</span>
+              <input type="number" step="0.01" data-bind="inertia_opt.Izz" />
+            </label>
+          </div>
+          <div class="field-grid two">
+            <label class="field">
+              <span>Реактор, МВт</span>
+              <input type="number" step="0.1" data-bind="power_opt.reactor_MW" />
+            </label>
+            <label class="field">
+              <span>Охлаждение, МВт</span>
+              <input type="number" step="0.1" data-bind="power_opt.cooling_MW" />
+            </label>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Хардпоинты и заметки</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Списки точек оружия попадают в AppConfig. Архетип может предложить типичную схему.">i</button>
+              <button class="btn btn-outline btn-small" id="hardpointsRecommendBtn">Архетип</button>
+            </div>
+          </div>
+          <div class="field-grid two">
+            <label class="field">
+              <span>Fixed</span>
+              <textarea data-bind="hardpoints_opt.fixed" data-format="list" placeholder="Nose S5&#10;Wing S3"></textarea>
+            </label>
+            <label class="field">
+              <span>Gimbals</span>
+              <textarea data-bind="hardpoints_opt.gimbals" data-format="list"></textarea>
+            </label>
+            <label class="field">
+              <span>Turrets</span>
+              <textarea data-bind="hardpoints_opt.turrets" data-format="list"></textarea>
+            </label>
+            <label class="field">
+              <span>Missiles</span>
+              <textarea data-bind="hardpoints_opt.missiles" data-format="list"></textarea>
+            </label>
+          </div>
+          <label class="field">
+            <span>Notes</span>
+            <textarea data-bind="notes_opt" placeholder="Особенности, ограничения, комплектации"></textarea>
+          </label>
+        </article>
+      </section>
+
+      <section class="grid grid--secondary">
+        <article class="card">
+          <div class="card-toolbar">
+            <div class="section-title">Рекомендации</div>
+            <div class="card-tools">
+              <button class="info-btn" data-info="Список подсказок сверяется с архетипами и физикой. Apply правит только указанные поля.">i</button>
+              <button class="btn btn-outline btn-small" id="applyAllRecommendations">Apply all</button>
+              <button class="btn btn-ghost btn-small" id="refreshRecommendations">Обновить</button>
+            </div>
+          </div>
+          <div class="recommendations" id="recommendationsList">
+            <div class="recommendations-empty">Нет несоответствий архетипу</div>
+          </div>
+        </article>
+
+        <article class="card log-card">
+          <div class="card-toolbar">
+            <div class="section-title">Лог действий</div>
+          </div>
+          <div class="status-log" id="statusLog"></div>
+        </article>
+
+        <article class="card json-card">
+          <div class="card-toolbar">
+            <div class="section-title">ShipConfig JSON</div>
+            <button class="btn btn-ghost btn-small" id="toggleJson">Показать JSON</button>
+          </div>
+          <div class="json-preview" id="jsonPanel">
+            <pre id="out"></pre>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div id="infoPopover" class="info-popover hidden">
+    <button id="infoClose" class="info-popover__close">×</button>
+    <p id="infoText"></p>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

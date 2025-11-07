@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "id": "medium_freighter_01",
+    "class": "medium freighter",
+    "name": "U2 Test Fighter",
+    "version": "0.5.3",
+    "author": "U2 Team",
+    "notes": "medium freighter"
+  },
+  "mass": {
+    "mass_kg": 100000,
+    "inertia_override": {
+      "Izz_kg_m2": 8710416.667
+    }
+  },
+  "geometry": {
+    "bbox_m": {
+      "width": 125,
+      "length": 70
+    },
+    "hull_radius_m": 71.633
+  },
+  "sprite": {
+    "path": "assets/ships/medium-freighter 512.png",
+    "size_px": {
+      "w": 512,
+      "h": 512
+    },
+    "pivot_px": {
+      "x": 256,
+      "y": 256
+    },
+    "orientation": "nose_right",
+    "alpha_thr": 16,
+    "m_per_px": 0.19043
+  },
+  "propulsion": {
+    "main_engine_thrust_max_N": 2451663
+  },
+  "rcs": {
+    "strafe_thrust_N": 1961330,
+    "turn_alpha_max_radps2": 1.8,
+    "turn_omega_max_radps": 2
+  },
+  "g_limits": {
+    "profile": "freighter",
+    "longitudinal": {
+      "sustained_g": 2.5,
+      "burst_g": 3.5,
+      "burst_duration_s": 2.5,
+      "recovery_cooldown_s": 6.25
+    },
+    "lateral": {
+      "sustained_g": 2,
+      "burst_g": 3,
+      "burst_duration_s": 2,
+      "recovery_cooldown_s": 5
+    },
+    "behavior": {
+      "smoothing_tau_s": 0.26,
+      "blackout_model": "none"
+    }
+  },
+  "assist": {
+    "coupled_enabled": true,
+    "coupled_omega_cap_radps": 1.5,
+    "coupled_alpha_cap_radps2": 1.35,
+    "coupled_align_gain": 0.8,
+    "coupled_deadzone_deg": 4,
+    "autobrake_eps_mps": 0.13
+  },
+  "spawn": {
+    "spawn_grace_seconds": 2.5
+  },
+  "tags": [
+    "medium freighter",
+    "0.5.3"
+  ]
+}
