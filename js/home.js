@@ -17,10 +17,8 @@
 
   const state = {
     current: null,
-    pickerReady: false,
     toastTimer: null,
-    manifest: [],
-    manifestReady: false
+    manifest: []
   };
 
   const cache = new Map();
@@ -56,14 +54,12 @@
       }
       const list = await response.json();
       state.manifest = Array.isArray(list) ? list : [];
-      state.manifestReady = true;
       if (!state.manifest.length) {
         showStatus("В каталоге ships нет конфигов.", true);
       }
     } catch (error) {
       console.error("manifest error", error);
       state.manifest = [];
-      state.manifestReady = false;
       showStatus("Не удалось загрузить список кораблей.", true);
     }
   }
@@ -325,9 +321,7 @@
     }
     if (open) {
       dom.shipPickerModal.removeAttribute("hidden");
-      if (!state.pickerReady) {
-        renderPicker();
-      }
+      renderPicker();
     } else {
       dom.shipPickerModal.setAttribute("hidden", "hidden");
     }
@@ -339,7 +333,18 @@
     }
     dom.pickerList.innerHTML = "";
 
-    BUILTIN_SHIPS.forEach((entry) => {
+    if (!state.manifest.length) {
+      const empty = document.createElement("p");
+      empty.className = "picker-empty";
+      empty.textContent = "Каталог ships пуст или не загружен.";
+      dom.pickerList.appendChild(empty);
+      return;
+    }
+
+    state.manifest.forEach((entry) => {
+      const cached = cache.get(entry.path);
+      const summary = cached?.summary;
+
       const card = document.createElement("button");
       card.type = "button";
       card.className = "picker-card";
@@ -348,15 +353,30 @@
         card.classList.add("is-active");
       }
 
+      const thumbSrc = summary?.sprite?.value
+        ? summary.sprite.kind === "path"
+          ? encodeURI(summary.sprite.value)
+          : summary.sprite.value
+        : "";
+
       card.innerHTML = `
-        <div class="picker-card__title">${entry.label}</div>
-        <div class="picker-card__meta" data-role="meta">${entry.note || "Загрузка..."}</div>
-        <span class="picker-card__badge">Встроенный</span>
+        <div class="picker-card__preview">
+          ${
+            thumbSrc
+              ? `<img src="${thumbSrc}" alt="Превью ${summary?.name ?? entry.path}" loading="lazy" />`
+              : '<div class="picker-card__preview--placeholder">Нет превью</div>'
+          }
+        </div>
+        <div class="picker-card__title">${summary?.name ?? entry.path.split("/").pop()}</div>
+        <div class="picker-card__meta" data-role="meta">
+          ${summary ? `${summary.size_type ?? "—"} · ${summary.preset ?? "—"}` : "Загрузка..."}
+        </div>
+        <span class="picker-card__badge">${summary?.version ?? "v0.x"}</span>
       `;
 
       card.addEventListener("click", async () => {
         try {
-          const result = await fetchShip(entry.path);
+          const result = cached || (await fetchShip(entry.path));
           applySelection(result);
           togglePicker(false);
           showStatus(`Выбран ${result.summary.name}`, false);
@@ -368,22 +388,26 @@
 
       dom.pickerList.appendChild(card);
 
-      fetchShip(entry.path)
-        .then(({ summary }) => {
-          const meta = card.querySelector('[data-role="meta"]');
-          if (meta) {
-            meta.textContent = `${summary.size_type ?? "—"} · ${summary.preset ?? "—"}`;
-          }
-        })
-        .catch(() => {
-          const meta = card.querySelector('[data-role="meta"]');
-          if (meta) {
-            meta.textContent = "Ошибка чтения файла";
-          }
-        });
+      if (!summary) {
+        fetchShip(entry.path)
+          .then(({ summary: fresh }) => {
+            const meta = card.querySelector('[data-role="meta"]');
+            if (meta) {
+              meta.textContent = `${fresh.size_type ?? "—"} · ${fresh.preset ?? "—"}`;
+            }
+            const img = card.querySelector("img");
+            if (img && fresh.sprite?.value) {
+              img.src = fresh.sprite.kind === "path" ? encodeURI(fresh.sprite.value) : fresh.sprite.value;
+            }
+          })
+          .catch(() => {
+            const meta = card.querySelector('[data-role="meta"]');
+            if (meta) {
+              meta.textContent = "Ошибка чтения файла";
+            }
+          });
+      }
     });
-
-    state.pickerReady = true;
   }
 
   async function handleImport(event) {
