@@ -85,14 +85,34 @@
   },
   "assist": {
     "preset": "Sport",
-    "slip_lim_deg": 15,
-    "stab_gain": 0.75,
-    "oversteer_bias": 0.2,
-    "cap_main_coupled": 0.85,
-    "brake_g_sustain": 6.9,
-    "brake_g_boost": 9.8,
-    "boost_duration_s": 3,
-    "boost_cooldown_s": 12
+    "handling_style": "Drift",
+    "speed_limiter_ratio": 0.92,
+    "handling": {
+      "stab_gain": 1.0,
+      "stab_damping": 0.85,
+      "slip_threshold_deg": 8,
+      "slip_limit_deg": 18,
+      "slip_correction_gain": 1.7,
+      "nose_follow_input": 0.25,
+      "anticipation_gain": 0.14,
+      "oversteer_bias": 0.2,
+      "bias": 0.22,
+      "responsiveness": 1.35,
+      "slip_target_max": 20,
+      "traction_control": 0.12,
+      "cap_main_coupled": 0.78,
+      "lat_authority": 0.95
+    },
+    "jerk": {
+      "forward_mps3": 240,
+      "lateral_mps3": 190
+    },
+    "brake": {
+      "g_sustain": 6.9,
+      "g_boost": 9.8,
+      "boost_duration_s": 3,
+      "boost_cooldown_s": 12
+    }
   },
   "media": {
     "sprite": {
