@@ -1,49 +1,49 @@
 {
   "meta": {
-    "id": "recon-1",
-    "name": "recon",
+    "id": "courier-1",
+    "name": "courier",
     "version": "0.6",
     "author": "U2 Team"
   },
   "classification": {
     "size": "small",
-    "type": "recon",
-    "size_type": "small recon",
+    "type": "courier",
+    "size_type": "small courier",
     "stealth": "stealth",
-    "variant": "Stealth Recon"
+    "variant": "Stealth Courier"
   },
   "geometry": {
-    "length_m": 26,
-    "width_m": 20.39,
+    "length_m": 24,
+    "width_m": 18.82,
     "height_m": 6,
-    "hull_radius_m": 16.52
+    "hull_radius_m": 15.25
   },
   "mass": {
-    "dry_t": 75.2
+    "dry_t": 79.7
   },
   "inertia_opt": {
-    "Ixx": 4358754.85,
-    "Iyy": 5078933.33,
-    "Izz": 8924088.19,
+    "Ixx": 2591527.86,
+    "Iyy": 4064700,
+    "Izz": 6178027.86,
     "Izz_kg_m2": 871041.667
   },
   "signatures": {
-    "IR": 1,
-    "EM": 1,
-    "CS": 1
+    "IR": 2,
+    "EM": 2,
+    "CS": 2
   },
   "performance": {
-    "scm_mps": 250,
+    "scm_mps": 260,
     "vmax_mps": 1200,
-    "accel_fwd_mps2": 60,
+    "accel_fwd_mps2": 70,
     "strafe_mps2": {
-      "x": 65,
-      "y": 65,
-      "z": 65
+      "x": 70,
+      "y": 70,
+      "z": 70
     },
     "angular_dps": {
-      "pitch": 90,
-      "yaw": 75,
+      "pitch": 85,
+      "yaw": 70,
       "roll": 110
     },
     "angular_accel_opt": {
@@ -53,15 +53,15 @@
     }
   },
   "propulsion": {
-    "main_thrust_MN": 3.9,
-    "rcs_budget_MN": 1.17
+    "main_thrust_MN": 4.9,
+    "rcs_budget_MN": 1.47
   },
   "power_opt": {
-    "reactor_MW": 30,
-    "cooling_MW": 24
+    "reactor_MW": 27.9,
+    "cooling_MW": 22.3
   },
   "payload": {
-    "cargo_scu": 8,
+    "cargo_scu": 16,
     "crew": "1–2"
   },
   "hardpoints_opt": {
@@ -71,17 +71,17 @@
     "missiles": []
   },
   "weapons": {
-    "summary": "light recon fit"
+    "summary": "light defensive"
   },
   "assist": {
-    "preset": "Recon",
-    "slip_lim_deg": 6,
-    "stab_gain": 0.98,
+    "preset": "F1",
+    "slip_lim_deg": 8,
+    "stab_gain": 0.95,
     "oversteer_bias": 0,
-    "cap_main_coupled": 0.4,
-    "speed_limiter_ratio": 0.65,
-    "brake_g_sustain": 3.5,
-    "brake_g_boost": 5,
+    "cap_main_coupled": 0.6400000000000001,
+    "speed_limiter_ratio": 0.765,
+    "brake_g_sustain": 6.067311467218674,
+    "brake_g_boost": 8.565616189014598,
     "boost_duration_s": 3,
     "boost_cooldown_s": 12
   },

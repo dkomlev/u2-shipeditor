@@ -1,0 +1,54 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Редактор AppConfig для U2 Flight Test v0.5.3+" />
+  <title>U2 Test · Настройки Вселенной</title>
+  <link rel="stylesheet" href="css/universe.css" />
+</head>
+<body>
+  <div class="universe-app">
+    <header class="action-bar">
+      <div class="action-bar__left">
+        <h1>Настройки Вселенной</h1>
+        <p>AppConfig v0.5.3+ · World / Render / HUD / Input / Collision / Autopilot</p>
+        <div class="status-line" id="statusLine">Автосохранение...</div>
+      </div>
+      <div class="action-bar__actions">
+        <a class="btn btn-ghost" href="docs/u_2_%D1%82%D0%B7_%D1%80%D0%B5%D0%B4%D0%B0%D0%BA%D1%82%D0%BE%D1%80%D0%B0_app_config.md" target="_blank" rel="noopener">ТЗ</a>
+        <label class="btn btn-outline file-upload">
+          Импорт JSON
+          <input type="file" id="importAppConfig" accept="application/json" />
+        </label>
+        <button class="btn btn-ghost" data-action="reset-section">Сбросить раздел</button>
+        <button class="btn btn-ghost" data-action="reset-all">Сбросить всё</button>
+        <button class="btn btn-outline" data-action="export">Экспорт</button>
+        <button class="btn btn-primary" data-action="save">Сохранить</button>
+        <button class="btn btn-primary btn-xl" data-action="launch">Поехали!</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" id="sectionNav"></aside>
+      <section class="editor">
+        <div id="formContainer"></div>
+      </section>
+      <aside class="preview">
+        <div class="preview__canvas">
+          <canvas id="previewCanvas" width="320" height="320"></canvas>
+        </div>
+        <div class="preview__summary" id="previewSummary"></div>
+        <div class="preview__legend">
+          <strong>Live Preview</strong>
+          <span>Сетка, астероиды и оси обновляются мгновенно.</span>
+          <span>Индикатор c показывает текущую скорость света.</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden>Сообщение</div>
+  <script src="js/app-config.js"></script>
+</body>
+</html>

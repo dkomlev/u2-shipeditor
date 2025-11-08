@@ -1,0 +1,66 @@
+{
+  "version": "0.5.3",
+  "build": "u2-universe-editor",
+  "paths": {
+    "ship_config_path": "ships/fighter/small fighter 06-config.json",
+    "app_config_path": "./config/appconfig.json"
+  },
+  "world": {
+    "seed": 1337,
+    "bounds": {
+      "width": 1000000,
+      "height": 1000000
+    },
+    "environment": "vacuum"
+  },
+  "physics": {
+    "c_mps": 1000,
+    "dt_sec": 0.0166667,
+    "gravity_mps2": 0
+  },
+  "render": {
+    "grid": {
+      "enabled": true,
+      "cell": 250,
+      "alpha": 0.25
+    },
+    "axis": false,
+    "hud": true
+  },
+  "hud": {
+    "language": "ru-RU",
+    "units": "metric",
+    "show_debug": true
+  },
+  "input": {
+    "profile": "kbm",
+    "invert_y": false,
+    "bindings": {
+      "throttle_up": "W",
+      "throttle_down": "S",
+      "strafe_left": "A",
+      "strafe_right": "D",
+      "boost": "LeftShift"
+    }
+  },
+  "collision": {
+    "mode": "AABB",
+    "debug": true
+  },
+  "asteroids": {
+    "enabled": true,
+    "count": 500,
+    "density": 0.4,
+    "radius_min": 35,
+    "radius_max": 12000
+  },
+  "autopilot": {
+    "coupled": true,
+    "dampeners": true,
+    "default_speed_limit": 1000
+  },
+  "debug": {
+    "logging": false,
+    "probes": true
+  }
+}
