@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>U2 Simulation Demo</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      background: #05060a;
+      color: #f0f6ff;
+      display: flex;
+      min-height: 100vh;
+    }
+    canvas {
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.03), transparent 60%);
+      flex: 2;
+      height: 100vh;
+    }
+    aside {
+      flex: 1;
+      padding: 24px;
+      border-left: 1px solid rgba(255,255,255,0.08);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.4rem;
+    }
+    .stat {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+    .tag {
+      display: inline-block;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      padding: 2px 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      font-size: 0.75rem;
+    }
+    .hud-panel {
+      position: fixed;
+      left: 24px;
+      top: 24px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(6px);
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: #f5f7ff;
+    }
+    .hud-panel strong {
+      color: #8ef2ff;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="simCanvas" width="900" height="600"></canvas>
+  <aside>
+    <h1>U2 Simulation Demo</h1>
+    <div id="shipMeta"></div>
+    <p>Управление: W/S — тяга, A/D — стрейф, Q/E — поворот. Space — Brake, C — Coupled/Decoupled, R — автопилот Random. Shift — Boost (пока влияет только на отображение).</p>
+    <p>Демо использует ядро из <code>js/sim/core.js</code>, ввод <code>js/sim/input.js</code> и новй Pilot Assist. Значения загружаются из manifest.</p>
+  </aside>
+  <div class="hud-panel" id="hudPanel"></div>
+
+  <script src="js/lib/ship-adapter.js"></script>
+  <script src="js/lib/resources.js"></script>
+  <script src="js/sim/core.js"></script>
+  <script src="js/sim/input.js"></script>
+  <script src="js/sim/pilot-assist.js"></script>
+  <script>
+    (async function () {
+      const resources = window.U2Resources;
+      const adapter = window.U2ShipAdapter;
+      const core = window.U2SimCore;
+      const inputLib = window.U2InputController;
+      const assistLib = window.U2PilotAssist;
+      if (!resources || !adapter || !core || !inputLib || !assistLib) {
+        console.error("Не удалось загрузить зависимости демо.");
+        return;
+      }
+
+      await resources.loadManifest();
+      const manifest = resources.getManifestSync();
+      if (!manifest || !manifest.length) {
+        alert("Manifest пуст. Добавьте корабли в каталог ships.");
+        return;
+      }
+      const first = manifest[0];
+      const shipJson = await resources.getShipConfig(first.path);
+      const summary = adapter.parseShipConfig(shipJson, first.path);
+
+      const state = core.createState({
+        mass_t: summary.mass_t,
+        propulsion: shipJson.propulsion
+      });
+      const input = inputLib.createInputController();
+      const assist = assistLib.createPilotAssist(summary);
+
+      const canvas = document.getElementById("simCanvas");
+      const ctx = canvas.getContext("2d");
+      const metaEl = document.getElementById("shipMeta");
+      const hudEl = document.getElementById("hudPanel");
+      const SCALE = 40;
+
+      updateMeta(summary);
+
+      document.addEventListener("keydown", input.handleKeyDown);
+      document.addEventListener("keyup", input.handleKeyUp);
+
+      canvas.addEventListener("pointerdown", (e) => {
+        canvas.setPointerCapture(e.pointerId);
+        input.handlePointerMove(normalizePointer(e));
+      });
+      canvas.addEventListener("pointermove", (e) => {
+        if (e.pressure > 0) {
+          input.handlePointerMove(normalizePointer(e));
+        }
+      });
+      canvas.addEventListener("pointerup", () => input.handlePointerEnd());
+      canvas.addEventListener("pointercancel", () => input.handlePointerEnd());
+
+      let lastTime = performance.now();
+      function loop(now) {
+        const dt = Math.min((now - lastTime) / 1000, 0.05);
+        lastTime = now;
+        const normalizedInput = input.update();
+        const assistResult = assist.update(state, normalizedInput, {
+          dt_sec: dt,
+          c_mps: 10000,
+          inertia: 1
+        });
+        const nextState = core.step(state, assistResult.command, {
+          dt_sec: dt,
+          c_mps: 10000,
+          inertia: 1
+        });
+        state.time = nextState.time;
+        state.position = nextState.position;
+        state.velocity = nextState.velocity;
+        state.orientation = nextState.orientation;
+        state.angularVelocity = nextState.angularVelocity;
+
+        draw(ctx, state, SCALE);
+        updateHud(state, assistResult);
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+
+      function normalizePointer(event) {
+        const rect = canvas.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+        return { x, y };
+      }
+
+      function draw(ctx, state, scale) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid(ctx, state, scale);
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.translate(state.position.x * scale, -state.position.y * scale);
+        ctx.rotate(state.orientation);
+        ctx.fillStyle = "#7af";
+        ctx.beginPath();
+        ctx.moveTo(24, 0);
+        ctx.lineTo(-18, 12);
+        ctx.lineTo(-18, -12);
+        ctx.closePath();
+        ctx.fill();
+
+        const vel = Math.hypot(state.velocity.x, state.velocity.y);
+        ctx.strokeStyle = "rgba(255,255,255,0.6)";
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.min(vel * 2, 40), 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawGrid(ctx, state, scale) {
+        ctx.save();
+        ctx.translate(canvas.width / 2 - state.position.x * scale, canvas.height / 2 + state.position.y * scale);
+        const spacing = 60;
+        ctx.strokeStyle = "rgba(255,255,255,0.07)";
+        ctx.lineWidth = 1;
+        for (let x = -canvas.width; x < canvas.width; x += spacing) {
+          ctx.beginPath();
+          ctx.moveTo(x, -canvas.height);
+          ctx.lineTo(x, canvas.height);
+          ctx.stroke();
+        }
+        for (let y = -canvas.height; y < canvas.height; y += spacing) {
+          ctx.beginPath();
+          ctx.moveTo(-canvas.width, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function updateMeta(summary) {
+        metaEl.innerHTML = `
+          <div class="stat"><strong>${summary.name}</strong> — ${summary.size_type}</div>
+          <div class="stat">Forward accel: ${summary.forward_accel_mps2?.toFixed(1) ?? "—"} м/с²</div>
+          <div class="stat">Lateral accel: ${summary.lateral_accel_mps2?.toFixed(1) ?? "—"} м/с²</div>
+          <div class="stat">Thrust/Weight: ${summary.thrust_to_weight?.toFixed(2) ?? "—"} g</div>
+          <div class="stat">Power: ${summary.power_MW ?? "—"} МВт</div>
+          <div>${(summary.tags || []).map((tag) => `<span class="tag">${tag}</span>`).join("")}</div>
+        `;
+      }
+    })();
+
+    function updateHud(state, assistResult) {
+      const hud = document.getElementById("hudPanel");
+      if (!hud) {
+        return;
+      }
+      const speed = Math.hypot(state.velocity.x, state.velocity.y);
+      hud.innerHTML = `
+        <div><strong>Mode:</strong> ${assistResult?.mode ?? "?"}</div>
+        <div><strong>Autopilot:</strong> ${assistResult?.autopilot ? "ON" : "off"}</div>
+        <div><strong>Speed:</strong> ${speed.toFixed(1)} м/с</div>
+        <div><strong>Angular:</strong> ${(state.angularVelocity * 57.3).toFixed(1)} °/с</div>
+        <div><strong>Pos:</strong> ${state.position.x.toFixed(1)}, ${state.position.y.toFixed(1)} км</div>
+      `;
+    }
+  </script>
+</body>
+</html>

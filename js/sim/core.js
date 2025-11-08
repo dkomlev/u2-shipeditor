@@ -57,8 +57,8 @@
 
     const bodyAx = forwardAccel;
     const bodyAy = lateralAccel;
-    const worldAx = bodyAx * Math.cos(state.orientation) - bodyAy * Math.sin(state.orientation);
-    const worldAy = bodyAx * Math.sin(state.orientation) + bodyAy * Math.cos(state.orientation);
+    const worldAx = (bodyAx * Math.cos(state.orientation) - bodyAy * Math.sin(state.orientation)) * 10;
+    const worldAy = (bodyAx * Math.sin(state.orientation) + bodyAy * Math.cos(state.orientation)) * 10;
 
     let vx = state.velocity.x + worldAx * dt;
     let vy = state.velocity.y + worldAy * dt;
