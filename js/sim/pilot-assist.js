@@ -12,19 +12,14 @@
   const EPS_V = 0.05;
 
   function createPilotAssist(summary = {}, options = {}) {
-    let mode = "Coupled";
-    let autopilotEnabled = options.autopilot ?? true;
     let brakeActive = false;
     let randomVec = { x: 0, y: 0 };
     let randomTimer = 0;
+    let randomTorque = 0;
 
     function update(state, input, env) {
-      if (input.toggleCoupled) {
-        mode = mode === "Coupled" ? "Decoupled" : "Coupled";
-      }
-      if (input.toggleAutopilot) {
-        autopilotEnabled = !autopilotEnabled;
-      }
+      const mode = input.modeCoupled ? "Coupled" : "Decoupled";
+      const autopilotEnabled = input.autopilot ?? false;
 
       const command = {
         thrustForward: 0,
@@ -53,9 +48,11 @@
             y: (Math.random() * 2 - 1) * 0.4
           };
           randomTimer = 1.5;
+          randomTorque = (Math.random() * 2 - 1) * 0.3;
         }
       } else {
         randomVec = { x: 0, y: 0 };
+        randomTorque = 0;
       }
 
       if (mode === "Coupled") {
@@ -71,6 +68,7 @@
 
       command.thrustForward = clamp(command.thrustForward + randomVec.y, -1, 1);
       command.thrustRight = clamp(command.thrustRight + randomVec.x, -1, 1);
+      command.torque = clamp(command.torque + randomTorque, -1, 1);
 
       return { command, mode, autopilot: autopilotEnabled };
     }

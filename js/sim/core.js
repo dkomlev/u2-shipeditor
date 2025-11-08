@@ -70,7 +70,7 @@
     }
 
     const newOrientation = wrapAngle(state.orientation + state.angularVelocity * dt);
-    const torque = (input.torque ?? 0) * state.thrustBudget.yaw_kNm;
+    const torque = (input.torque ?? 0) * state.thrustBudget.yaw_kNm * 4;
     const angularAcceleration = torque / (mass_kg * (env.inertia ?? 1));
     const newAngularVelocity = state.angularVelocity + angularAcceleration * dt;
 

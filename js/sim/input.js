@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
@@ -23,41 +23,46 @@
   function createInputController(appConfigInput = {}) {
     const bindings = normalizeBindings(appConfigInput.bindings || {});
     const keyState = new Set();
-    const toggles = {
+    let pointerVector = { x: 0, y: 0 };
+    let pointerActive = false;
+    const state = {
       coupled: false,
       autopilot: false
     };
-    let pointerVector = { x: 0, y: 0 };
-    let pointerActive = false;
-
-    function normalizeKey(event) {
-      return event.key?.toLowerCase();
-    }
 
     function handleKeyDown(event) {
-      const key = normalizeKey(event);
-      if (!key) {
-        return;
+      const key = normalizeKey(event.key);
+      const code = normalizeKey(event.code);
+      if (key) {
+        keyState.add(key);
       }
-      keyState.add(key);
+      if (code) {
+        keyState.add(code);
+      }
     }
 
     function handleKeyUp(event) {
-      const key = normalizeKey(event);
-      if (!key) {
-        return;
+      const key = normalizeKey(event.key);
+      const code = normalizeKey(event.code);
+      if (key) {
+        keyState.delete(key);
       }
-      keyState.delete(key);
-      if (key === bindings.toggle_coupled) {
-        toggles.coupled = !toggles.coupled;
+      if (code) {
+        keyState.delete(code);
       }
-      if (key === bindings.toggle_random_autopilot) {
-        toggles.autopilot = !toggles.autopilot;
+      if (matchesBinding(bindings.toggle_coupled, key, code)) {
+        state.coupled = !state.coupled;
+      }
+      if (matchesBinding(bindings.toggle_random_autopilot, key, code)) {
+        state.autopilot = !state.autopilot;
       }
     }
 
-    function handlePointerMove(xNorm, yNorm) {
-      pointerVector = { x: clamp(xNorm, -1, 1), y: clamp(yNorm, -1, 1) };
+    function handlePointerMove(vector) {
+      pointerVector = {
+        x: clamp(vector.x, -1, 1),
+        y: clamp(vector.y, -1, 1)
+      };
       pointerActive = true;
     }
 
@@ -67,21 +72,40 @@
     }
 
     function update() {
-      const thrustForward =
-        (keyState.has(bindings.throttle_up) ? 1 : 0) - (keyState.has(bindings.throttle_down) ? 1 : 0);
-      const thrustRight =
-        (keyState.has(bindings.strafe_right) ? 1 : 0) - (keyState.has(bindings.strafe_left) ? 1 : 0);
-      const torque = (keyState.has(bindings.yaw_right) ? 1 : 0) - (keyState.has(bindings.yaw_left) ? 1 : 0);
+      let thrustForward = (isPressed(bindings.throttle_up) ? 1 : 0) - (isPressed(bindings.throttle_down) ? 1 : 0);
+      let thrustRight = (isPressed(bindings.strafe_right) ? 1 : 0) - (isPressed(bindings.strafe_left) ? 1 : 0);
+      let torque = (isPressed(bindings.yaw_left) ? 1 : 0) - (isPressed(bindings.yaw_right) ? 1 : 0);
+
+      if (pointerActive) {
+        torque += pointerVector.x;
+      }
+
+      thrustForward = clamp(thrustForward, -1, 1);
+      thrustRight = clamp(thrustRight, -1, 1);
+      const clampedTorque = clamp(torque, -1, 1);
+      const brake = isPressed(bindings.brake);
+      const boost = isPressed(bindings.boost);
+
+      const manualInput =
+        Math.abs(thrustForward) > 0.05 || Math.abs(thrustRight) > 0.05 || Math.abs(clampedTorque) > 0.05 || brake;
+
+      if (manualInput) {
+        state.autopilot = false;
+      }
 
       return {
-        thrustForward: clamp(thrustForward + (pointerActive ? -pointerVector.y : 0), -1, 1),
-        thrustRight: clamp(thrustRight + (pointerActive ? pointerVector.x : 0), -1, 1),
-        torque: clamp(torque, -1, 1),
-        brake: keyState.has(bindings.brake),
-        boost: keyState.has(bindings.boost),
-        toggleCoupled: toggles.coupled,
-        toggleAutopilot: toggles.autopilot
+        thrustForward,
+        thrustRight,
+        torque: clampedTorque,
+        brake,
+        boost,
+        modeCoupled: state.coupled,
+        autopilot: state.autopilot
       };
+    }
+
+    function isPressed(bindingList) {
+      return bindingList.some((token) => keyState.has(token));
     }
 
     return {
@@ -94,13 +118,43 @@
   }
 
   function normalizeBindings(overrides) {
-    const binding = { ...DEFAULT_BINDINGS };
-    Object.keys(overrides).forEach((key) => {
-      if (typeof overrides[key] === "string") {
-        binding[key] = overrides[key].toLowerCase();
+    const result = {};
+    Object.keys(DEFAULT_BINDINGS).forEach((key) => {
+      result[key] = normalizeBindingValue(overrides[key] ?? DEFAULT_BINDINGS[key]);
+    });
+    return result;
+  }
+
+  function normalizeBindingValue(value) {
+    const tokens = Array.isArray(value) ? value : [value];
+    const set = new Set();
+    tokens.forEach((token) => {
+      const lower = normalizeKey(token);
+      if (!lower) {
+        return;
+      }
+      set.add(lower);
+      if (lower.length === 1 && lower >= "a" && lower <= "z") {
+        set.add(`key${lower}`);
+      }
+      if (lower.startsWith("key") && lower.length === 4) {
+        set.add(lower.slice(3));
       }
     });
-    return binding;
+    return Array.from(set);
+  }
+
+  function matchesBinding(bindingList, key, code) {
+    if (!bindingList || !bindingList.length) {
+      return false;
+    }
+    const normalizedKey = normalizeKey(key);
+    const normalizedCode = normalizeKey(code);
+    return bindingList.some((token) => token === normalizedKey || token === normalizedCode);
+  }
+
+  function normalizeKey(value) {
+    return typeof value === "string" ? value.trim().toLowerCase() : "";
   }
 
   function clamp(value, min, max) {
