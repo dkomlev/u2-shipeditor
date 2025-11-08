@@ -61,9 +61,27 @@ function testLimiterReducesForward() {
   assert.ok(result.command.thrustForward < 0.6, "limiter should clamp forward thrust when speed is high");
 }
 
+function testManualStrafePassThrough() {
+  const controller = CoupledController.createCoupledController({
+    handling: {
+      lat_authority: 0.8,
+      cap_main_coupled: 0.6
+    },
+    profileName: "Balanced"
+  });
+  const state = makeState();
+  const result = controller.update(
+    state,
+    { thrustForward: 0, thrustRight: 1, turn: 0 },
+    { dt_sec: 1 / 60, c_mps: 10000, vmax_runtime: 10000, inertia: 1 }
+  );
+  assert.ok(result.command.thrustRight > 0.9, "manual strafe input should pass through in Coupled mode");
+}
+
 function run() {
   testSlipResponse();
   testLimiterReducesForward();
+  testManualStrafePassThrough();
   console.log("coupled-controller.test.js: OK");
 }
 

@@ -16,7 +16,7 @@
     let limiterRatio = clamp(options.speedLimiterRatio ?? 0.85, 0.2, 1);
     let profileName = handling.profileName || options.profileName || "Balanced";
     let prevForwardAccel = 0;
-    let prevLateralAccel = 0;
+    let prevSlipAccel = 0;
 
     function configure(next = {}) {
       if (next.handling) {
@@ -49,14 +49,17 @@
       const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
       const turnInput = clamp(input.turn ?? input.torque ?? 0, -1, 1);
       const throttleInput = clamp(input.thrustForward ?? 0, -1, 1);
+      const strafeInput = clamp(input.thrustRight ?? 0, -1, 1);
 
       const betaTarget = solveSlipTarget(turnInput, speed, handling);
       const slipError = betaTarget - beta;
 
-      const lateralAccelTarget = clampNormalized(slipError, handling, lateralCap);
-      const smoothedLatAccel = applyJerk(prevLateralAccel, lateralAccelTarget, jerk.lateral_mps3, dt);
-      prevLateralAccel = smoothedLatAccel;
-      const thrustRight = lateralCap > 0 ? clamp(smoothedLatAccel / lateralCap, -handling.lat_authority, handling.lat_authority) : 0;
+      const manualLatAccel = strafeInput * lateralCap;
+      const slipCorrection = computeSlipCorrection(slipError, handling, lateralCap);
+      const smoothedSlip = applyJerk(prevSlipAccel, slipCorrection, jerk.lateral_mps3, dt);
+      prevSlipAccel = smoothedSlip;
+      const combinedLatAccel = clamp(manualLatAccel + smoothedSlip, -lateralCap, lateralCap);
+      const thrustRight = lateralCap > 0 ? clamp(combinedLatAccel / lateralCap, -1, 1) : 0;
 
       let forwardAccelTarget = solveForwardAccel(throttleInput, forwardCap, backwardCap, handling);
       forwardAccelTarget = applySpeedLimiter(forwardAccelTarget, speed, vmaxRuntime, c, limiterRatio);
@@ -140,14 +143,14 @@
     return betaTarget;
   }
 
-  function clampNormalized(slipError, handling, lateralCap) {
+  function computeSlipCorrection(slipError, handling, lateralCap) {
     if (!lateralCap) {
       return 0;
     }
     const slipLimitRad = handling.slip_limit_deg * DEG2RAD || DEG2RAD;
     const normalized = slipError / slipLimitRad;
-    const maxAccel = lateralCap * handling.lat_authority;
-    return clamp(normalized * maxAccel, -maxAccel, maxAccel);
+    const maxCorrection = lateralCap * handling.lat_authority;
+    return clamp(normalized * maxCorrection, -maxCorrection, maxCorrection);
   }
 
   function solveForwardAccel(throttleInput, forwardCap, backwardCap, handling) {

@@ -144,7 +144,7 @@ alpha_cmd = stab_gain * angle_error(theta, dir_target)
 
 ### 4.3 Латеральный и продольный каналы
 
-- **Латеральный thrust** вычисляется из PD по (β_target−β) с лимитом `lat_authority * caps.lat_mps2`.  
+- **Латеральный thrust** складывает два сигнала: прямой ввод пилота (стрейф) и коррекцию Coupled, гасящую нецелевой слип. Стрейф проходит напрямую через полный бюджет боковой тяги, а коррекция ограничена `lat_authority * caps.lat_mps2` и сглаживается jerk‑лимитом. Это позволяет в Coupled свободно парковаться боком, не жертвуя стабилизацией носа.
 - **Продольный thrust** определяется целевым ускорением и jerk‑лимитом:
   ```
   a_fwd_cmd = clamp(input.thrustForward * caps.long_mps2, ±cap_main_coupled)
@@ -214,4 +214,3 @@ HUD должен отображать:
 2. Обновить ShipConfig parser и AppConfig UI, чтобы редактировать handling_profile.  
 3. Добавить HUD-индикаторы и telemetries.  
 4. Покрыть CoupledController unit-тестами и интеграционными сценариями PA‑12…PA‑15.
-
