@@ -1,13 +1,18 @@
-"use strict";
+﻿"use strict";
 
 (function () {
   const STORAGE_KEY = "u2.selectedShip";
-  const MANIFEST_PATH = "ships/manifest.json";
   const SHIP_ADAPTER =
     (typeof window !== "undefined" && window.U2ShipAdapter) ||
     (typeof globalThis !== "undefined" && globalThis.U2ShipAdapter);
   if (!SHIP_ADAPTER) {
     console.error("U2ShipAdapter is not loaded. Ensure js/lib/ship-adapter.js is included.");
+  }
+  const RESOURCE_SERVICE =
+    (typeof window !== "undefined" && window.U2Resources) ||
+    (typeof globalThis !== "undefined" && globalThis.U2Resources);
+  if (!RESOURCE_SERVICE) {
+    console.error("U2Resources is not loaded. Ensure js/lib/resources.js is included.");
   }
 
   const state = {
@@ -31,7 +36,6 @@
     cacheDom();
     bindEvents();
     await loadManifest();
-    await prefetchManifestShips();
     try {
       await restoreSelection();
     } catch (error) {
@@ -39,38 +43,6 @@
       showStatus("Не удалось восстановить выбор. Загружаем случайный корабль.", true);
       await loadRandomShip();
     }
-  }
-
-  async function loadManifest() {
-    try {
-      const response = await fetch(MANIFEST_PATH, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`manifest status ${response.status}`);
-      }
-      const list = await response.json();
-      state.manifest = Array.isArray(list) ? list : [];
-      if (!state.manifest.length) {
-        showStatus("В каталоге ships нет конфигов.", true);
-      }
-    } catch (error) {
-      console.error("manifest error", error);
-      state.manifest = [];
-      showStatus("Не удалось загрузить список кораблей.", true);
-    }
-  }
-
-  async function prefetchManifestShips() {
-    if (!state.manifest.length) {
-      return;
-    }
-    await Promise.all(
-      state.manifest.map((entry) =>
-        fetchShip(entry.path).catch((error) => {
-          console.warn("prefetch failed", entry.path, error);
-          return null;
-        })
-      )
-    );
   }
 
   function cacheDom() {
@@ -127,11 +99,23 @@
     });
   }
 
-  function summarizeShip(config, path) {
-    if (!SHIP_ADAPTER) {
-      throw new Error("Ship adapter is not available");
+  async function loadManifest() {
+    if (!RESOURCE_SERVICE) {
+      state.manifest = [];
+      showStatus("Не удалось загрузить список кораблей.", true);
+      return;
     }
-    return SHIP_ADAPTER.parseShipConfig(config, path);
+    try {
+      const list = await RESOURCE_SERVICE.loadManifest();
+      state.manifest = Array.isArray(list) ? list : [];
+      if (!state.manifest.length) {
+        showStatus("В каталоге ships нет конфигов.", true);
+      }
+    } catch (error) {
+      console.error("manifest error", error);
+      state.manifest = [];
+      showStatus("Не удалось загрузить список кораблей.", true);
+    }
   }
 
   async function restoreSelection() {
@@ -170,10 +154,6 @@
       console.warn("Не удалось распарсить localStorage", error);
     }
 
-    return loadDefaultShip();
-  }
-
-  async function loadDefaultShip() {
     return loadRandomShip();
   }
 
@@ -203,13 +183,14 @@
     if (cache.has(key)) {
       return cache.get(key);
     }
-
-    const encoded = encodeURI(path);
-    const response = await fetch(encoded, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`Не удалось загрузить ${path}: ${response.status}`);
-    }
-    const json = await response.json();
+    const json = RESOURCE_SERVICE
+      ? await RESOURCE_SERVICE.getShipConfig(path)
+      : await fetch(path, { cache: "no-store" }).then((response) => {
+          if (!response.ok) {
+            throw new Error(`Не удалось загрузить ${path}: ${response.status}`);
+          }
+          return response.json();
+        });
     const summary = summarizeShip(json, path);
     const payload = {
       summary,
@@ -346,9 +327,6 @@
     }
 
     state.manifest.forEach((entry) => {
-      const cached = cache.get(entry.path);
-      const summary = cached?.summary;
-
       const card = document.createElement("button");
       card.type = "button";
       card.className = "picker-card";
@@ -357,11 +335,14 @@
         card.classList.add("is-active");
       }
 
+      const summary = getEntrySummary(entry);
       const thumbSrc = summary?.sprite?.value
         ? summary.sprite.kind === "path"
           ? encodeURI(summary.sprite.value)
           : summary.sprite.value
         : "";
+      const stats = renderPickerStats(summary);
+      const tags = renderTags(summary?.tags || entry.tags);
 
       card.innerHTML = `
         <div class="picker-card__preview">
@@ -372,15 +353,17 @@
           }
         </div>
         <div class="picker-card__title">${summary?.name ?? entry.path.split("/").pop()}</div>
-        <div class="picker-card__meta" data-role="meta">
-          ${summary ? `${summary.size_type ?? "—"} · ${summary.preset ?? "—"}` : "Загрузка..."}
+        <div class="picker-card__meta">
+          ${summary?.size_type ?? "—"} · ${summary?.preset ?? "—"}
         </div>
+        ${stats}
+        ${tags}
         <span class="picker-card__badge">${summary?.version ?? "v0.x"}</span>
       `;
 
       card.addEventListener("click", async () => {
         try {
-          const result = cached || (await fetchShip(entry.path));
+          const result = await fetchShip(entry.path);
           applySelection(result);
           togglePicker(false);
           showStatus(`Выбран ${result.summary.name}`, false);
@@ -391,26 +374,6 @@
       });
 
       dom.pickerList.appendChild(card);
-
-      if (!summary) {
-        fetchShip(entry.path)
-          .then(({ summary: fresh }) => {
-            const meta = card.querySelector('[data-role="meta"]');
-            if (meta) {
-              meta.textContent = `${fresh.size_type ?? "—"} · ${fresh.preset ?? "—"}`;
-            }
-            const img = card.querySelector("img");
-            if (img && fresh.sprite?.value) {
-              img.src = fresh.sprite.kind === "path" ? encodeURI(fresh.sprite.value) : fresh.sprite.value;
-            }
-          })
-          .catch(() => {
-            const meta = card.querySelector('[data-role="meta"]');
-            if (meta) {
-              meta.textContent = "Ошибка чтения файла";
-            }
-          });
-      }
     });
   }
 
@@ -451,8 +414,8 @@
       preset: summary.preset,
       presetSource: summary.presetSource,
       mass_t: summary.mass_t,
-      scm_mps: summary.scm_mps,
-      vmax_mps: summary.vmax_mps,
+      forward_accel_mps2: summary.forward_accel_mps2,
+      lateral_accel_mps2: summary.lateral_accel_mps2,
       angular_dps: summary.angular_dps,
       sprite: summary.sprite
     };
@@ -477,8 +440,6 @@
     } finally {
       dom.launchBtn?.classList.remove("is-busy");
     }
-  }
-
   function buildFlightTestAppConfig(selection) {
     const { summary, sourceKind, sourcePath, raw } = selection;
     const shipReference =
@@ -560,6 +521,13 @@
     }, 4200);
   }
 
+  function summarizeShip(config, sourcePath) {
+    if (!SHIP_ADAPTER) {
+      throw new Error("Ship adapter is not available");
+    }
+    return SHIP_ADAPTER.parseShipConfig(config, sourcePath);
+  }
+
   function formatNumber(value, suffix) {
     if (typeof value !== "number" || Number.isNaN(value)) {
       return "—";
@@ -591,5 +559,63 @@
       return "—";
     }
     return `${value.toFixed(0)}°`;
+  }
+
+  function getEntrySummary(entry) {
+    if (!entry) {
+      return null;
+    }
+    if (entry.summary) {
+      return entry.summary;
+    }
+    return {
+      name: entry.name,
+      size: entry.size,
+      type: entry.type,
+      size_type: entry.size && entry.type ? `${entry.size} ${entry.type}` : entry.size || entry.type || "",
+      preset: entry.preset,
+      version: entry.version,
+      sprite: entry.preview || null,
+      forward_accel_mps2: entry.forward_accel_mps2 ?? null,
+      lateral_accel_mps2: entry.lateral_accel_mps2 ?? null,
+      thrust_to_weight: entry.thrust_to_weight ?? null,
+      power_MW: entry.power_MW ?? null,
+      tags: entry.tags || []
+    };
+  }
+
+  function renderPickerStats(summary) {
+    if (!summary) {
+      return "";
+    }
+    const forward = typeof summary.forward_accel_mps2 === "number" ? `${summary.forward_accel_mps2.toFixed(0)} м/с²` : "—";
+    const lateral = typeof summary.lateral_accel_mps2 === "number" ? `${summary.lateral_accel_mps2.toFixed(0)} м/с²` : "—";
+    const ratio =
+      typeof summary.thrust_to_weight === "number"
+        ? summary.thrust_to_weight >= 10
+          ? summary.thrust_to_weight.toFixed(1)
+          : summary.thrust_to_weight.toFixed(2)
+        : "—";
+    return `
+      <div class="picker-card__stats">
+        <span title="Forward accel">↗ ${forward}</span>
+        <span title="Lateral accel">⇆ ${lateral}</span>
+        <span title="Thrust to weight">T/W ${ratio}</span>
+      </div>
+    `;
+  }
+
+  function renderTags(tags) {
+    if (!tags || !tags.length) {
+      return "";
+    }
+    return `
+      <div class="tag-list">
+        ${tags
+          .slice(0, 6)
+          .map((tag) => `<span class="tag">${tag}</span>`)
+          .join("")}
+      </div>
+    `;
   }
 })();

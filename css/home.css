@@ -509,6 +509,29 @@ img {
   font-size: 0.9rem;
 }
 
+.picker-card__stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0.6rem;
+}
+
+.tag {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+}
+
 .picker-card__badge {
   align-self: flex-start;
   font-size: 0.75rem;
