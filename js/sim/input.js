@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
@@ -8,20 +8,21 @@
   }
 })(typeof self !== "undefined" ? self : this, function () {
   const DEFAULT_BINDINGS = {
-    throttle_up: "w",
-    throttle_down: "s",
-    strafe_left: "a",
-    strafe_right: "d",
-    yaw_left: "q",
-    yaw_right: "e",
-    brake: " ",
-    boost: "shift",
-    toggle_coupled: "c",
-    toggle_random_autopilot: "r"
+    throttle_up: ["w", "keyw"],
+    throttle_down: ["s", "keys"],
+    strafe_left: ["a", "keya"],
+    strafe_right: ["d", "keyd"],
+    yaw_left: ["q", "keyq"],
+    yaw_right: ["e", "keye"],
+    brake: [" ", "space", "spacebar"],
+    boost: ["shift", "shiftleft", "shiftright"],
+    toggle_coupled: ["c", "keyc"],
+    toggle_random_autopilot: ["r", "keyr"]
   };
 
   function createInputController(appConfigInput = {}) {
     const bindings = normalizeBindings(appConfigInput.bindings || {});
+    const pointerEnabled = appConfigInput.pointerEnabled === true;
     const keyState = new Set();
     let pointerVector = { x: 0, y: 0 };
     let pointerActive = false;
@@ -59,6 +60,9 @@
     }
 
     function handlePointerMove(vector) {
+      if (!pointerEnabled) {
+        return;
+      }
       pointerVector = {
         x: clamp(vector.x, -1, 1),
         y: clamp(vector.y, -1, 1)
@@ -67,6 +71,9 @@
     }
 
     function handlePointerEnd() {
+      if (!pointerEnabled) {
+        return;
+      }
       pointerVector = { x: 0, y: 0 };
       pointerActive = false;
     }
@@ -76,8 +83,8 @@
       let thrustRight = (isPressed(bindings.strafe_right) ? 1 : 0) - (isPressed(bindings.strafe_left) ? 1 : 0);
       let torque = (isPressed(bindings.yaw_left) ? 1 : 0) - (isPressed(bindings.yaw_right) ? 1 : 0);
 
-      if (pointerActive) {
-        torque += pointerVector.x;
+      if (pointerEnabled && pointerActive) {
+        torque -= pointerVector.x;
       }
 
       thrustForward = clamp(thrustForward, -1, 1);
@@ -87,7 +94,7 @@
       const boost = isPressed(bindings.boost);
 
       const manualInput =
-        Math.abs(thrustForward) > 0.05 || Math.abs(thrustRight) > 0.05 || Math.abs(clampedTorque) > 0.05 || brake;
+        Math.abs(thrustForward) > 0.05 || Math.abs(thrustRight) > 0.05 || Math.abs(clampedTorque) > 0.05;
 
       if (manualInput) {
         state.autopilot = false;
@@ -102,6 +109,19 @@
         modeCoupled: state.coupled,
         autopilot: state.autopilot
       };
+    }
+
+    function normalizeKey(value) {
+      return typeof value === "string" ? value.trim().toLowerCase() : "";
+    }
+
+    function matchesBinding(bindingList, key, code) {
+      if (!bindingList || !bindingList.length) {
+        return false;
+      }
+      const normalizedKey = normalizeKey(key);
+      const normalizedCode = normalizeKey(code);
+      return bindingList.some((token) => token === normalizedKey || token === normalizedCode);
     }
 
     function isPressed(bindingList) {
@@ -120,41 +140,19 @@
   function normalizeBindings(overrides) {
     const result = {};
     Object.keys(DEFAULT_BINDINGS).forEach((key) => {
-      result[key] = normalizeBindingValue(overrides[key] ?? DEFAULT_BINDINGS[key]);
+      const override = overrides[key];
+      if (Array.isArray(override)) {
+        result[key] = override.map(normalizeKey).filter(Boolean);
+      } else if (typeof override === "string") {
+        result[key] = [normalizeKey(override)].filter(Boolean);
+      } else {
+        result[key] = DEFAULT_BINDINGS[key];
+      }
+      if (!result[key]?.length) {
+        result[key] = DEFAULT_BINDINGS[key];
+      }
     });
     return result;
-  }
-
-  function normalizeBindingValue(value) {
-    const tokens = Array.isArray(value) ? value : [value];
-    const set = new Set();
-    tokens.forEach((token) => {
-      const lower = normalizeKey(token);
-      if (!lower) {
-        return;
-      }
-      set.add(lower);
-      if (lower.length === 1 && lower >= "a" && lower <= "z") {
-        set.add(`key${lower}`);
-      }
-      if (lower.startsWith("key") && lower.length === 4) {
-        set.add(lower.slice(3));
-      }
-    });
-    return Array.from(set);
-  }
-
-  function matchesBinding(bindingList, key, code) {
-    if (!bindingList || !bindingList.length) {
-      return false;
-    }
-    const normalizedKey = normalizeKey(key);
-    const normalizedCode = normalizeKey(code);
-    return bindingList.some((token) => token === normalizedKey || token === normalizedCode);
-  }
-
-  function normalizeKey(value) {
-    return typeof value === "string" ? value.trim().toLowerCase() : "";
   }
 
   function clamp(value, min, max) {

@@ -9,7 +9,8 @@
 })(typeof self !== "undefined" ? self : this, function () {
   const clamp01 = (v) => Math.min(Math.max(v, 0), 1);
   const TAU = Math.PI * 2;
-  const GAMMA_MIN_SPEED = 0.0001;
+  const KN_TO_N = 1000;
+  const KNM_TO_NM = 1000;
 
   function createState(config) {
     return {
@@ -20,6 +21,10 @@
       angularVelocity: 0,
       mass_t: config.mass_t ?? 1,
       thrustBudget: resolveThrust(config),
+      camera: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 }
+      },
       control: {
         thrustForward: 0,
         thrustRight: 0,
@@ -49,16 +54,25 @@
     const mass_kg = state.mass_t * 1000;
 
     // body accelerations
-    const forwardAccel =
-      ((input.thrustForward ?? 0) *
-        (input.thrustForward >= 0 ? state.thrustBudget.forward_kN : state.thrustBudget.backward_kN)) /
-      mass_kg;
-    const lateralAccel = ((input.thrustRight ?? 0) * state.thrustBudget.lateral_kN) / mass_kg;
+    const thrustForwardInput = clamp(input.thrustForward ?? 0, -1, 1);
+    const thrustRightInput = clamp(input.thrustRight ?? 0, -1, 1);
+    const torqueInput = clamp(input.torque ?? 0, -1, 1);
 
-    const bodyAx = forwardAccel;
-    const bodyAy = lateralAccel;
-    const worldAx = (bodyAx * Math.cos(state.orientation) - bodyAy * Math.sin(state.orientation)) * 10;
-    const worldAy = (bodyAx * Math.sin(state.orientation) + bodyAy * Math.cos(state.orientation)) * 10;
+    const forwardBudget = thrustForwardInput >= 0 ? state.thrustBudget.forward_kN : state.thrustBudget.backward_kN;
+    const forwardAccel = (thrustForwardInput * forwardBudget * KN_TO_N) / mass_kg;
+    const lateralAccel = (thrustRightInput * state.thrustBudget.lateral_kN * KN_TO_N) / mass_kg;
+
+    const forwardVec = {
+      x: Math.cos(state.orientation),
+      y: Math.sin(state.orientation)
+    };
+    const rightVec = {
+      x: Math.sin(state.orientation),
+      y: -Math.cos(state.orientation)
+    };
+
+    const worldAx = forwardVec.x * forwardAccel + rightVec.x * lateralAccel;
+    const worldAy = forwardVec.y * forwardAccel + rightVec.y * lateralAccel;
 
     let vx = state.velocity.x + worldAx * dt;
     let vy = state.velocity.y + worldAy * dt;
@@ -70,20 +84,25 @@
     }
 
     const newOrientation = wrapAngle(state.orientation + state.angularVelocity * dt);
-    const torque = (input.torque ?? 0) * state.thrustBudget.yaw_kNm * 4;
-    const angularAcceleration = torque / (mass_kg * (env.inertia ?? 1));
+    const torqueNm = torqueInput * (state.thrustBudget.yaw_kNm ?? 0) * KNM_TO_NM;
+    const moment = Math.max(env.inertia ?? 1, 0.1) * mass_kg;
+    const angularAcceleration = torqueNm / moment;
     const newAngularVelocity = state.angularVelocity + angularAcceleration * dt;
+
+    const nextPosition = {
+      x: state.position.x + vx * dt,
+      y: state.position.y + vy * dt
+    };
+    const newCamera = updateCamera(state.camera, nextPosition);
 
     return {
       ...state,
       time: state.time + dt,
-      position: {
-        x: state.position.x + vx * dt,
-        y: state.position.y + vy * dt
-      },
+      position: nextPosition,
       velocity: { x: vx, y: vy },
       orientation: newOrientation,
-      angularVelocity: newAngularVelocity
+      angularVelocity: newAngularVelocity,
+      camera: newCamera
     };
   }
 
@@ -95,6 +114,17 @@
     if (a < -Math.PI) a += TAU;
     if (a > Math.PI) a -= TAU;
     return a;
+  }
+
+  function updateCamera(camera, targetPosition) {
+    return {
+      position: { x: targetPosition.x, y: targetPosition.y },
+      velocity: camera?.velocity ?? { x: 0, y: 0 }
+    };
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
   }
 
   return {
