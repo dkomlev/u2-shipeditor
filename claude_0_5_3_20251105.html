@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>U2 FlightTest v0.5.3</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Courier New', monospace;
+      overflow: hidden;
+      background: #000;
+      touch-action: none;
+    }
+    
+    #canvas {
+      display: block;
+      background: rgb(9, 12, 20);
+    }
+    
+    #hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      color: #0ff;
+      font-size: 14px;
+      text-shadow: 0 0 5px #0ff;
+    }
+    
+    .hud-panel {
+      position: absolute;
+      background: rgba(0, 20, 40, 0.7);
+      border: 1px solid #0ff;
+      padding: 8px;
+      border-radius: 4px;
+    }
+    
+    #top-left {
+      top: 12px;
+      left: 12px;
+    }
+    
+    #top-right {
+      top: 12px;
+      right: 12px;
+      text-align: right;
+    }
+    
+    #bottom-left {
+      bottom: 12px;
+      left: 12px;
+    }
+    
+    #bottom-right {
+      bottom: 12px;
+      right: 12px;
+      text-align: right;
+    }
+    
+    .status-good { color: #0f0; }
+    .status-warn { color: #ff0; }
+    .status-danger { color: #f00; }
+    
+    .mobile-control {
+      position: fixed;
+      pointer-events: auto;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    
+    .mobile-control:active {
+      opacity: 0.9;
+    }
+    
+    #left-stick {
+      bottom: 16%;
+      left: 12%;
+      width: 96px;
+      height: 96px;
+    }
+    
+    #quick-nose-pad {
+      bottom: 18%;
+      right: 12%;
+      width: 96px;
+      height: 96px;
+    }
+    
+    .stick-base {
+      width: 100%;
+      height: 100%;
+      border: 2px solid #0ff;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,255,255,0.1), transparent);
+      position: relative;
+    }
+    
+    .stick-thumb {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #0ff;
+      border-radius: 50%;
+      background: rgba(0,255,255,0.3);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: background 0.1s;
+    }
+    
+    .mobile-button {
+      pointer-events: auto;
+      background: rgba(0,255,255,0.2);
+      border: 2px solid #0ff;
+      color: #0ff;
+      padding: 10px 16px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-shadow: 0 0 5px #0ff;
+    }
+    
+    .mobile-button:active {
+      background: rgba(0,255,255,0.5);
+      transform: scale(0.95);
+    }
+    
+    #brake-btn {
+      position: fixed;
+      top: 14%;
+      right: 10%;
+    }
+    
+    #zoom-plus {
+      position: fixed;
+      top: 28%;
+      right: 10%;
+    }
+    
+    #zoom-minus {
+      position: fixed;
+      top: 40%;
+      right: 10%;
+    }
+    
+    #game-over {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 20, 40, 0.95);
+      border: 2px solid #f00;
+      padding: 30px 50px;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+      pointer-events: auto;
+    }
+    
+    #game-over h1 {
+      color: #f00;
+      font-size: 36px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px #f00;
+    }
+    
+    #game-over button {
+      margin-top: 20px;
+      padding: 12px 30px;
+      font-size: 16px;
+      background: rgba(0,255,255,0.3);
+      border: 2px solid #0ff;
+      color: #0ff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+    }
+    
+    #game-over button:hover {
+      background: rgba(0,255,255,0.5);
+    }
+    
+    @media (max-width: 768px) {
+      .hud-panel {
+        font-size: 11px;
+        padding: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  
+  <div id="hud">
+    <div id="top-left" class="hud-panel">
+      <div>SPEED: <span id="speed">0</span> m/s</div>
+      <div>γ: <span id="gamma">1.000</span></div>
+      <div>|a|: <span id="accel">0.0</span>g</div>
+    </div>
+    
+    <div id="top-right" class="hud-panel">
+      <div>MODE: <span id="mode">COUPLED</span></div>
+      <div>COLL: <span id="collision-mode">ALPHA</span></div>
+      <div>ZOOM: <span id="zoom">1.0</span>x</div>
+    </div>
+    
+    <div id="bottom-left" class="hud-panel">
+      <div>POS: <span id="pos">0, 0</span></div>
+      <div>θ: <span id="theta">0.0</span>°</div>
+    </div>
+    
+    <div id="bottom-right" class="hud-panel">
+      <div id="autopilot-status" class="status-good">AUTOPILOT: ON</div>
+      <div>FPS: <span id="fps">60</span></div>
+    </div>
+    
+    <!-- Mobile Controls -->
+    <div id="left-stick" class="mobile-control" style="display:none;">
+      <div class="stick-base">
+        <div class="stick-thumb" id="left-thumb"></div>
+      </div>
+    </div>
+    
+    <div id="quick-nose-pad" class="mobile-control" style="display:none;">
+      <div class="stick-base">
+        <div class="stick-thumb" id="nose-thumb"></div>
+      </div>
+    </div>
+    
+    <button id="brake-btn" class="mobile-button" style="display:none;">BRAKE</button>
+    <button id="zoom-plus" class="mobile-button" style="display:none;">+</button>
+    <button id="zoom-minus" class="mobile-button" style="display:none;">-</button>
+  </div>
+  
+  <div id="game-over">
+    <h1>DESTROYED</h1>
+    <p style="color: #0ff; font-size: 18px;">Ship destroyed by asteroid collision</p>
+    <button id="restart-btn">RESTART</button>
+  </div>
+
+  <script>
+    // Configuration
+    const APP_CONFIG = {
+      meta: { version: "0.5.3", schema_version: 1 },
+      world: {
+        tick_rate_hz: 60,
+        c_prime: 1000,
+        bounds_rect_m: { w: 10000, h: 10000 },
+        wrap: true,
+        seed: 123456
+      },
+      render: {
+        zoom: { min: 0.5, max: 3.0, start: 1.0 },
+        target_fps: 60,
+        background: { color_rgba: [9, 12, 20, 255] },
+        grid: { enabled: false, meters_per_cell: 100 }
+      },
+      collision: {
+        mode_default: "Alpha",
+        overlay_visible_default: false,
+        alpha_thr: 20,
+        fallback_threshold: {
+          zoom_min: 0.6,
+          zoom_max: 2.5,
+          on_taint: "AABB"
+        }
+      },
+      asteroids: {
+        coverage_fraction: 0.015,
+        density_kg_m3: 2700,
+        radius_m: { min: 3.0, max: 120.0 },
+        distribution: {
+          type: "lognormal",
+          params: { mu: 2.0, sigma: 1.1 }
+        },
+        margin_m: 50
+      },
+      autopilot: {
+        random_enabled_default: true,
+        cmd_hold_ms_range: [400, 900],
+        thrust_range: [0.3, 1.0],
+        strafe_probability: 0.45,
+        turn_rate_scale: 1.0
+      }
+    };
+
+    const SHIP_CONFIG = {
+      meta: { 
+        id: "fighter_v01", 
+        class: "fighter", 
+        name: "U2 Test Fighter", 
+        version: "0.5.3"
+      },
+      mass: { mass_kg: 10000 },
+      geometry: { 
+        bbox_m: { width: 25.0, length: 20.5 }, 
+        hull_radius_m: 16.17 
+      },
+      sprite: { 
+        orientation: "nose_right", 
+        alpha_thr: 16, 
+        m_per_px: 0.05 
+      },
+      propulsion: { main_engine_thrust_max_N: 1100000 },
+      rcs: { 
+        strafe_thrust_N: 160000, 
+        turn_alpha_max_radps2: 1.8, 
+        turn_omega_max_radps: 2.0 
+      },
+      g_limits: {
+        profile: "fighter",
+        longitudinal: { sustained_g: 6.0, burst_g: 8.0, burst_duration_s: 2.0, recovery_cooldown_s: 5.0 },
+        lateral: { sustained_g: 4.0, burst_g: 6.0, burst_duration_s: 1.5, recovery_cooldown_s: 4.0 },
+        behavior: { smoothing_tau_s: 0.16, blackout_model: "none" }
+      },
+      assist: {
+        coupled_enabled: true,
+        coupled_omega_cap_radps: 1.2,
+        coupled_alpha_cap_radps2: 0.9,
+        coupled_align_gain: 0.6,
+        coupled_deadzone_deg: 3,
+        autobrake_eps_mps: 0.1
+      },
+      spawn: { spawn_grace_seconds: 2.0 }
+    };
+
+    // Game state
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let state = {
+      ship: {
+        x: 5000,
+        y: 5000,
+        vx: 0,
+        vy: 0,
+        theta: 0,
+        omega: 0,
+        mass: SHIP_CONFIG.mass.mass_kg
+      },
+      asteroids: [],
+      zoom: APP_CONFIG.render.zoom.start,
+      coupled: true,
+      autopilot: APP_CONFIG.autopilot.random_enabled_default,
+      collision_mode: APP_CONFIG.collision.mode_default,
+      overlay_visible: APP_CONFIG.collision.overlay_visible_default,
+      game_over: false,
+      spawn_grace_time: SHIP_CONFIG.spawn.spawn_grace_seconds,
+      time: 0,
+      input: {
+        thrust: 0,
+        strafe: 0,
+        turn: 0,
+        brake: false
+      },
+      autopilot_cmd: {
+        thrust: 0,
+        strafe: 0,
+        turn: 0,
+        next_change: 0
+      }
+    };
+
+    const keys = {};
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // Setup canvas
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Show mobile controls
+    if (isMobile) {
+      document.getElementById('left-stick').style.display = 'block';
+      document.getElementById('quick-nose-pad').style.display = 'block';
+      document.getElementById('brake-btn').style.display = 'block';
+      document.getElementById('zoom-plus').style.display = 'block';
+      document.getElementById('zoom-minus').style.display = 'block';
+    }
+
+    // Random number generator with seed
+    class SeededRandom {
+      constructor(seed) {
+        this.seed = seed;
+      }
+      next() {
+        this.seed = (this.seed * 9301 + 49297) % 233280;
+        return this.seed / 233280;
+      }
+      range(min, max) {
+        return min + this.next() * (max - min);
+      }
+      lognormal(mu, sigma) {
+        const u1 = this.next();
+        const u2 = this.next();
+        const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        return Math.exp(mu + sigma * z);
+      }
+    }
+
+    // Generate asteroids
+    function generateAsteroids() {
+      const rng = new SeededRandom(APP_CONFIG.world.seed);
+      const bounds = APP_CONFIG.world.bounds_rect_m;
+      const area = bounds.w * bounds.h;
+      const targetCoverage = APP_CONFIG.asteroids.coverage_fraction * area;
+      
+      const asteroids = [];
+      let currentCoverage = 0;
+      const margin = APP_CONFIG.asteroids.margin_m;
+      
+      while (currentCoverage < targetCoverage) {
+        let radius;
+        if (APP_CONFIG.asteroids.distribution.type === "lognormal") {
+          const { mu, sigma } = APP_CONFIG.asteroids.distribution.params;
+          radius = rng.lognormal(mu, sigma);
+        } else {
+          radius = rng.range(APP_CONFIG.asteroids.radius_m.min, APP_CONFIG.asteroids.radius_m.max);
+        }
+        
+        radius = Math.max(APP_CONFIG.asteroids.radius_m.min, Math.min(APP_CONFIG.asteroids.radius_m.max, radius));
+        
+        let x, y;
+        let attempts = 0;
+        do {
+          x = rng.range(margin, bounds.w - margin);
+          y = rng.range(margin, bounds.h - margin);
+          attempts++;
+        } while (attempts < 10 && Math.hypot(x - state.ship.x, y - state.ship.y) < margin + radius);
+        
+        const volume = (4/3) * Math.PI * Math.pow(radius, 3);
+        const mass = volume * APP_CONFIG.asteroids.density_kg_m3;
+        
+        asteroids.push({ x, y, radius, mass, angle: rng.next() * Math.PI * 2 });
+        currentCoverage += Math.PI * radius * radius;
+      }
+      
+      return asteroids;
+    }
+
+    state.asteroids = generateAsteroids();
+
+    // Physics constants
+    const G0 = 9.80665;
+    const DT = 1 / APP_CONFIG.world.tick_rate_hz;
+    const C_PRIME = APP_CONFIG.world.c_prime;
+
+    // Autopilot
+    function updateAutopilot(dt) {
+      if (!state.autopilot) return;
+      
+      state.time += dt;
+      
+      if (state.time >= state.autopilot_cmd.next_change) {
+        const rng = new SeededRandom(Date.now());
+        const hold_time = rng.range(APP_CONFIG.autopilot.cmd_hold_ms_range[0], APP_CONFIG.autopilot.cmd_hold_ms_range[1]) / 1000;
+        
+        state.autopilot_cmd.thrust = rng.range(APP_CONFIG.autopilot.thrust_range[0], APP_CONFIG.autopilot.thrust_range[1]) * (rng.next() > 0.5 ? 1 : -1);
+        state.autopilot_cmd.strafe = rng.next() < APP_CONFIG.autopilot.strafe_probability ? rng.range(-1, 1) : 0;
+        state.autopilot_cmd.turn = rng.range(-1, 1) * APP_CONFIG.autopilot.turn_rate_scale;
+        
+        state.autopilot_cmd.next_change = state.time + hold_time;
+      }
+      
+      state.input.thrust = state.autopilot_cmd.thrust;
+      state.input.strafe = state.autopilot_cmd.strafe;
+      state.input.turn = state.autopilot_cmd.turn;
+    }
+
+    // Physics update
+    function updatePhysics(dt) {
+      if (state.game_over) return;
+      
+      if (state.spawn_grace_time > 0) {
+        state.spawn_grace_time -= dt;
+      }
+      
+      const ship = state.ship;
+      const speed = Math.hypot(ship.vx, ship.vy);
+      const gamma = 1 / Math.sqrt(1 - Math.pow(speed / C_PRIME, 2));
+      
+      // Input handling
+      let thrust = state.input.thrust;
+      let strafe = state.input.strafe;
+      let turn = state.input.turn;
+      
+      // Apply thrust
+      const cos_theta = Math.cos(ship.theta);
+      const sin_theta = Math.sin(ship.theta);
+      
+      let ax = 0, ay = 0;
+      
+      if (Math.abs(thrust) > 0.01) {
+        const F = thrust * SHIP_CONFIG.propulsion.main_engine_thrust_max_N;
+        const a_thrust = F / ship.mass;
+        
+        // Relativistic clamping
+        const vx_dir = ship.vx / (speed + 1e-10);
+        const vy_dir = ship.vy / (speed + 1e-10);
+        const thrust_parallel = (cos_theta * vx_dir + sin_theta * vy_dir);
+        
+        let a_max = a_thrust;
+        if (thrust_parallel > 0.5) {
+          a_max = Math.min(a_max, SHIP_CONFIG.g_limits.longitudinal.sustained_g * G0 / Math.pow(gamma, 3));
+        } else {
+          a_max = Math.min(a_max, SHIP_CONFIG.g_limits.lateral.sustained_g * G0 / gamma);
+        }
+        
+        const a_actual = Math.min(Math.abs(a_thrust), a_max) * Math.sign(thrust);
+        ax += a_actual * cos_theta;
+        ay += a_actual * sin_theta;
+      }
+      
+      if (Math.abs(strafe) > 0.01) {
+        const F = strafe * SHIP_CONFIG.rcs.strafe_thrust_N;
+        const a_strafe = F / ship.mass;
+        const a_max = Math.min(Math.abs(a_strafe), SHIP_CONFIG.g_limits.lateral.sustained_g * G0 / gamma);
+        const a_actual = a_max * Math.sign(strafe);
+        ax += a_actual * (-sin_theta);
+        ay += a_actual * cos_theta;
+      }
+      
+      // Brake assist
+      if (state.input.brake && speed > SHIP_CONFIG.assist.autobrake_eps_mps) {
+        const brake_dir_x = -ship.vx / speed;
+        const brake_dir_y = -ship.vy / speed;
+        const max_brake = SHIP_CONFIG.propulsion.main_engine_thrust_max_N / ship.mass;
+        const a_brake = Math.min(max_brake, SHIP_CONFIG.g_limits.longitudinal.sustained_g * G0 / Math.pow(gamma, 3));
+        ax = a_brake * brake_dir_x;
+        ay = a_brake * brake_dir_y;
+      }
+      
+      // Update velocity
+      ship.vx += ax * dt;
+      ship.vy += ay * dt;
+      
+      // Clamp speed
+      const new_speed = Math.hypot(ship.vx, ship.vy);
+      if (new_speed >= 0.999 * C_PRIME) {
+        const factor = (0.999 * C_PRIME) / new_speed;
+        ship.vx *= factor;
+        ship.vy *= factor;
+      }
+      
+      // Rotation
+      let target_omega = turn * SHIP_CONFIG.rcs.turn_omega_max_radps;
+      
+      if (state.coupled && new_speed > 1.0) {
+        const velocity_angle = Math.atan2(ship.vy, ship.vx);
+        let angle_diff = velocity_angle - ship.theta;
+        while (angle_diff > Math.PI) angle_diff -= 2 * Math.PI;
+        while (angle_diff < -Math.PI) angle_diff += 2 * Math.PI;
+        
+        if (Math.abs(angle_diff) > SHIP_CONFIG.assist.coupled_deadzone_deg * Math.PI / 180) {
+          const coupled_omega = angle_diff * SHIP_CONFIG.assist.coupled_align_gain;
+          target_omega = Math.max(-SHIP_CONFIG.assist.coupled_omega_cap_radps, 
+                                   Math.min(SHIP_CONFIG.assist.coupled_omega_cap_radps, coupled_omega));
+        }
+      }
+      
+      const alpha_max = SHIP_CONFIG.rcs.turn_alpha_max_radps2;
+      const omega_diff = target_omega - ship.omega;
+      const alpha = Math.max(-alpha_max, Math.min(alpha_max, omega_diff / dt));
+      
+      ship.omega += alpha * dt;
+      ship.omega = Math.max(-SHIP_CONFIG.rcs.turn_omega_max_radps, 
+                            Math.min(SHIP_CONFIG.rcs.turn_omega_max_radps, ship.omega));
+      
+      ship.theta += ship.omega * dt;
+      while (ship.theta > Math.PI) ship.theta -= 2 * Math.PI;
+      while (ship.theta < -Math.PI) ship.theta += 2 * Math.PI;
+      
+      // Update position
+      ship.x += ship.vx * dt;
+      ship.y += ship.vy * dt;
+      
+      // Wrap around
+      const bounds = APP_CONFIG.world.bounds_rect_m;
+      if (ship.x < 0) ship.x += bounds.w;
+      if (ship.x >= bounds.w) ship.x -= bounds.w;
+      if (ship.y < 0) ship.y += bounds.h;
+      if (ship.y >= bounds.h) ship.y -= bounds.h;
+      
+      // Collision detection
+      if (state.spawn_grace_time <= 0) {
+        for (let i = 0; i < state.asteroids.length; i++) {
+          const ast = state.asteroids[i];
+          const dx = ship.x - ast.x;
+          const dy = ship.y - ast.y;
+          const dist = Math.hypot(dx, dy);
+          
+          if (dist < ast.radius + SHIP_CONFIG.geometry.hull_radius_m) {
+            // Collision!
+            state.game_over = true;
+            document.getElementById('game-over').style.display = 'block';
+            
+            // Update asteroid
+            ast.mass = Math.max(0, ast.mass - ship.mass);
+            if (ast.mass > 0) {
+              const volume_ratio = ast.mass / (ast.mass + ship.mass);
+              ast.radius *= Math.pow(volume_ratio, 1/3);
+            } else {
+              state.asteroids.splice(i, 1);
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    // Render
+    function render() {
+      ctx.fillStyle = `rgb(${APP_CONFIG.render.background.color_rgba.slice(0,3).join(',')})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(state.zoom, state.zoom);
+      ctx.translate(-state.ship.x, -state.ship.y);
+      
+      // Draw asteroids
+      state.asteroids.forEach(ast => {
+        ctx.fillStyle = '#888';
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 2 / state.zoom;
+        ctx.beginPath();
+        const sides = 8;
+        for (let i = 0; i <= sides; i++) {
+          const angle = ast.angle + (i / sides) * Math.PI * 2;
+          const r = ast.radius * (0.8 + 0.2 * Math.sin(i * 2.3));
+          const x = ast.x + Math.cos(angle) * r;
+          const y = ast.y + Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.fill();
+        ctx.stroke();
+      });
+      
+      // Draw ship
+      ctx.save();
+      ctx.translate(state.ship.x, state.ship.y);
+      ctx.rotate(state.ship.theta);
+      
+      const shipSize = 25;
+      ctx.fillStyle = state.spawn_grace_time > 0 ? 'rgba(0,255,255,0.5)' : '#0ff';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2 / state.zoom;
+      
+      ctx.beginPath();
+      ctx.moveTo(shipSize, 0);
+      ctx.lineTo(-shipSize * 0.6, shipSize * 0.5);
+      ctx.lineTo(-shipSize * 0.3, 0);
+      ctx.lineTo(-shipSize * 0.6, -shipSize * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // Engines
+      if (state.input.thrust > 0.1) {
+        ctx.fillStyle = '#0ff';
+        ctx.beginPath();
+        ctx.moveTo(-shipSize * 0.5, 0);
+        ctx.lineTo(-shipSize * 1.2, shipSize * 0.15);
+        ctx.lineTo(-shipSize * 1.2, -shipSize * 0.15);
+        ctx.closePath();
+        ctx.fill();
+      }
+      
+      ctx.restore();
+      ctx.restore();
+      
+      // Update HUD
+      const speed = Math.hypot(state.ship.vx, state.ship.vy);
+      const gamma = 1 / Math.sqrt(1 - Math.pow(speed / C_PRIME, 2));
+      const ax = 0; // Simplified for display
+      const ay = 0;
+      const accel = Math.hypot(ax, ay) / G0;
+      
+      document.getElementById('speed').textContent = speed.toFixed(1);
+      document.getElementById('gamma').textContent = gamma.toFixed(3);
+      document.getElementById('accel').textContent = accel.toFixed(2);
+      document.getElementById('mode').textContent = state.coupled ? 'COUPLED' : 'DECOUPLED';
+      document.getElementById('collision-mode').textContent = state.collision_mode;
+      document.getElementById('zoom').textContent = state.zoom.toFixed(1);
+      document.getElementById('pos').textContent = `${Math.round(state.ship.x)}, ${Math.round(state.ship.y)}`;
+      document.getElementById('theta').textContent = (state.ship.theta * 180 / Math.PI).toFixed(1);
+      
+      const autopilotStatus = document.getElementById('autopilot-status');
+      autopilotStatus.textContent = state.autopilot ? 'AUTOPILOT: ON' : 'AUTOPILOT: OFF';
+      autopilotStatus.className = state.autopilot ? 'status-good' : '';
+    }
+
+    // Input handling
+    document.addEventListener('keydown', e => {
+      keys[e.key.toUpperCase()] = true;
+      
+      if (state.autopilot && !state.game_over) {
+        state.autopilot = false;
+      }
+      
+      if (e.key.toUpperCase() === 'R') {
+        state.autopilot = !state.autopilot;
+        if (state.autopilot) {
+          state.autopilot_cmd.next_change = 0;
+        }
+      }
+      if (e.key.toUpperCase() === 'C') {
+        state.coupled = !state.coupled;
+      }
+      if (e.key === 'F2') {
+        state.collision_mode = state.collision_mode === 'AABB' ? 'Alpha' : 'AABB';
+      }
+      if (e.key === 'F3') {
+        state.overlay_visible = !state.overlay_visible;
+      }
+      if (e.key === '+' || e.key === '=') {
+        state.zoom = Math.min(APP_CONFIG.render.zoom.max, state.zoom + 0.1);
+      }
+      if (e.key === '-' || e.key === '_') {
+        state.zoom = Math.max(APP_CONFIG.render.zoom.min, state.zoom - 0.1);
+      }
+    });
+
+    document.addEventListener('keyup', e => {
+      keys[e.key.toUpperCase()] = false;
+    });
+
+    function processKeyboardInput() {
+      if (state.autopilot || state.game_over) {
+        if (!state.autopilot) {
+          state.input.thrust = 0;
+          state.input.strafe = 0;
+          state.input.turn = 0;
+          state.input.brake = false;
+        }
+        return;
+      }
+      
+      state.input.thrust = 0;
+      state.input.strafe = 0;
+      state.input.turn = 0
+state.input.brake = false;
+      
+      if (keys['W']) state.input.thrust = 1;
+      if (keys['S']) state.input.thrust = -1;
+      if (keys['A']) state.input.strafe = -1;
+      if (keys['D']) state.input.strafe = 1;
+      if (keys['Q']) state.input.turn = -1;
+      if (keys['E']) state.input.turn = 1;
+      if (keys[' ']) state.input.brake = true;
+    }
+
+    // Mobile touch handling
+    let leftStickTouch = null;
+    let nosepadTouch = null;
+    let nosepadHoldTimer = null;
+    let nosepadDecoupledLocked = false;
+
+    function handleTouchStart(e) {
+      e.preventDefault();
+      
+      if (state.autopilot && !state.game_over) {
+        state.autopilot = false;
+      }
+      
+      for (let touch of e.changedTouches) {
+        const rect = e.target.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        if (e.target.id === 'left-stick' || e.target.closest('#left-stick')) {
+          leftStickTouch = { id: touch.identifier, startX: x, startY: y };
+        } else if (e.target.id === 'quick-nose-pad' || e.target.closest('#quick-nose-pad')) {
+          nosepadTouch = { id: touch.identifier, startX: x, startY: y };
+          
+          // Start hold timer for decoupled
+          nosepadHoldTimer = setTimeout(() => {
+            if (!nosepadDecoupledLocked && nosepadTouch) {
+              state.coupled = false;
+            }
+          }, 700);
+        }
+      }
+    }
+
+    function handleTouchMove(e) {
+      e.preventDefault();
+      
+      for (let touch of e.changedTouches) {
+        const stickBase = document.getElementById('left-stick');
+        const noseBase = document.getElementById('quick-nose-pad');
+        
+        if (leftStickTouch && touch.identifier === leftStickTouch.id) {
+          const rect = stickBase.getBoundingClientRect();
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          const touchX = touch.clientX - rect.left;
+          const touchY = touch.clientY - rect.top;
+          
+          let dx = touchX - centerX;
+          let dy = touchY - centerY;
+          const dist = Math.hypot(dx, dy);
+          const maxDist = 48;
+          
+          if (dist > 12) { // deadzone
+            if (dist > maxDist) {
+              dx = dx / dist * maxDist;
+              dy = dy / dist * maxDist;
+            }
+            
+            state.input.strafe = dx / maxDist;
+            state.input.thrust = -dy / maxDist;
+            
+            const thumb = document.getElementById('left-thumb');
+            thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+          }
+        }
+        
+        if (nosepadTouch && touch.identifier === nosepadTouch.id) {
+          const rect = noseBase.getBoundingClientRect();
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          const touchX = touch.clientX - rect.left;
+          const touchY = touch.clientY - rect.top;
+          
+          let dx = touchX - centerX;
+          const dist = Math.abs(dx);
+          const maxDist = 48;
+          
+          if (dist > 12) {
+            if (dist > maxDist) {
+              dx = Math.sign(dx) * maxDist;
+            }
+            
+            state.input.turn = -dx / maxDist;
+            
+            const thumb = document.getElementById('nose-thumb');
+            thumb.style.transform = `translate(calc(-50% + ${dx}px), -50%)`;
+          }
+        }
+      }
+    }
+
+    function handleTouchEnd(e) {
+      e.preventDefault();
+      
+      for (let touch of e.changedTouches) {
+        if (leftStickTouch && touch.identifier === leftStickTouch.id) {
+          leftStickTouch = null;
+          state.input.thrust = 0;
+          state.input.strafe = 0;
+          
+          const thumb = document.getElementById('left-thumb');
+          thumb.style.transform = 'translate(-50%, -50%)';
+        }
+        
+        if (nosepadTouch && touch.identifier === nosepadTouch.id) {
+          // Check for double tap
+          const now = Date.now();
+          if (nosepadTouch.lastTap && (now - nosepadTouch.lastTap) < 250) {
+            // Double tap - toggle decoupled lock
+            nosepadDecoupledLocked = !nosepadDecoupledLocked;
+            state.coupled = !nosepadDecoupledLocked;
+          }
+          nosepadTouch.lastTap = now;
+          
+          if (nosepadHoldTimer) {
+            clearTimeout(nosepadHoldTimer);
+            nosepadHoldTimer = null;
+          }
+          
+          // Release - return to coupled if not locked
+          if (!nosepadDecoupledLocked) {
+            state.coupled = true;
+          }
+          
+          nosepadTouch = null;
+          state.input.turn = 0;
+          
+          const thumb = document.getElementById('nose-thumb');
+          thumb.style.transform = 'translate(-50%, -50%)';
+        }
+      }
+    }
+
+    if (isMobile) {
+      const leftStick = document.getElementById('left-stick');
+      const nosePad = document.getElementById('quick-nose-pad');
+      
+      leftStick.addEventListener('touchstart', handleTouchStart, { passive: false });
+      leftStick.addEventListener('touchmove', handleTouchMove, { passive: false });
+      leftStick.addEventListener('touchend', handleTouchEnd, { passive: false });
+      
+      nosePad.addEventListener('touchstart', handleTouchStart, { passive: false });
+      nosePad.addEventListener('touchmove', handleTouchMove, { passive: false });
+      nosePad.addEventListener('touchend', handleTouchEnd, { passive: false });
+      
+      // Brake button
+      document.getElementById('brake-btn').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        state.input.brake = true;
+        if (state.autopilot) state.autopilot = false;
+      });
+      document.getElementById('brake-btn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        state.input.brake = false;
+      });
+      
+      // Zoom buttons
+      let zoomInterval;
+      
+      document.getElementById('zoom-plus').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const range = APP_CONFIG.render.zoom.max - APP_CONFIG.render.zoom.min;
+        state.zoom = Math.min(APP_CONFIG.render.zoom.max, state.zoom + range * 0.1);
+        
+        zoomInterval = setInterval(() => {
+          state.zoom = Math.min(APP_CONFIG.render.zoom.max, state.zoom + range * 0.1);
+        }, 100);
+      });
+      
+      document.getElementById('zoom-plus').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (zoomInterval) {
+          clearInterval(zoomInterval);
+          zoomInterval = null;
+        }
+      });
+      
+      document.getElementById('zoom-minus').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const range = APP_CONFIG.render.zoom.max - APP_CONFIG.render.zoom.min;
+        state.zoom = Math.max(APP_CONFIG.render.zoom.min, state.zoom - range * 0.1);
+        
+        zoomInterval = setInterval(() => {
+          state.zoom = Math.max(APP_CONFIG.render.zoom.min, state.zoom - range * 0.1);
+        }, 100);
+      });
+      
+      document.getElementById('zoom-minus').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (zoomInterval) {
+          clearInterval(zoomInterval);
+          zoomInterval = null;
+        }
+      });
+    }
+
+    // Restart
+    document.getElementById('restart-btn').addEventListener('click', () => {
+      state.ship.x = 5000;
+      state.ship.y = 5000;
+      state.ship.vx = 0;
+      state.ship.vy = 0;
+      state.ship.theta = 0;
+      state.ship.omega = 0;
+      state.zoom = APP_CONFIG.render.zoom.start;
+      state.coupled = true;
+      state.autopilot = APP_CONFIG.autopilot.random_enabled_default;
+      state.collision_mode = APP_CONFIG.collision.mode_default;
+      state.overlay_visible = APP_CONFIG.collision.overlay_visible_default;
+      state.game_over = false;
+      state.spawn_grace_time = SHIP_CONFIG.spawn.spawn_grace_seconds;
+      state.time = 0;
+      state.autopilot_cmd.next_change = 0;
+      
+      state.asteroids = generateAsteroids();
+      
+      document.getElementById('game-over').style.display = 'none';
+    });
+
+    // Main game loop
+    let lastTime = performance.now();
+    let fpsCounter = 0;
+    let fpsTime = 0;
+
+    function gameLoop(currentTime) {
+      const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.1);
+      lastTime = currentTime;
+      
+      // FPS counter
+      fpsCounter++;
+      fpsTime += deltaTime;
+      if (fpsTime >= 1.0) {
+        document.getElementById('fps').textContent = Math.round(fpsCounter / fpsTime);
+        fpsCounter = 0;
+        fpsTime = 0;
+      }
+      
+      if (!state.game_over) {
+        if (state.autopilot) {
+          updateAutopilot(deltaTime);
+        } else {
+          processKeyboardInput();
+        }
+        
+        updatePhysics(deltaTime);
+      }
+      
+      render();
+      
+      requestAnimationFrame(gameLoop);
+    }
+
+    requestAnimationFrame(gameLoop);
+
+    console.log('U2 FlightTest v0.5.3 initialized');
+    console.log('Ship:', SHIP_CONFIG.meta.name);
+    console.log('Autopilot:', state.autopilot ? 'ENABLED' : 'DISABLED');
+    console.log('Asteroids:', state.asteroids.length);
+  </script>
+</body>
+</html>
