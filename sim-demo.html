@@ -71,6 +71,7 @@
   <script src="js/lib/resources.js"></script>
   <script src="js/sim/core.js"></script>
   <script src="js/sim/input.js"></script>
+  <script src="js/sim/coupled-controller.js"></script>
   <script src="js/sim/pilot-assist.js"></script>
   <script>
     (async function () {
@@ -114,6 +115,7 @@
       const ctx = canvas.getContext("2d");
       const metaEl = document.getElementById("shipMeta");
       const hudEl = document.getElementById("hudPanel");
+      const baseProfile = summary.assist?.handling_style || "Balanced";
       const PX_PER_METER = 0.4;
 
       updateMeta(summary);
@@ -147,7 +149,7 @@
         state.camera = nextState.camera;
 
         draw(ctx, state, PX_PER_METER);
-        updateHud(state, assistResult, normalizedInput);
+        updateHud(state, assistResult, normalizedInput, baseProfile);
         requestAnimationFrame(loop);
       }
       requestAnimationFrame(loop);
@@ -241,7 +243,7 @@
         `;
       }
 
-      function updateHud(state, assistResult, normalizedInput) {
+      function updateHud(state, assistResult, normalizedInput, baseProfile) {
         if (!hudEl) {
           return;
         }
@@ -249,14 +251,21 @@
         const forwardSpeed = state.velocity.x * Math.cos(state.orientation) + state.velocity.y * Math.sin(state.orientation);
         const rightSpeed = state.velocity.x * Math.sin(state.orientation) - state.velocity.y * Math.cos(state.orientation);
         const modeLabel = assistResult?.mode ?? (normalizedInput.modeCoupled ? "Coupled" : "Decoupled");
+        const telemetry = assistResult?.telemetry || {};
+        const profileLabel = telemetry.profile || baseProfile;
+        const slipCurrent = typeof telemetry.slip_deg === "number" ? telemetry.slip_deg.toFixed(1) : "—";
+        const slipTarget = typeof telemetry.slip_target_deg === "number" ? telemetry.slip_target_deg.toFixed(1) : "—";
         hudEl.innerHTML = `
           <div><strong>Mode:</strong> ${modeLabel}</div>
           <div><strong>Autopilot:</strong> ${assistResult?.autopilot ? "ON" : "OFF"}</div>
+          <div><strong>Profile:</strong> ${profileLabel}</div>
           <div><strong>Boost:</strong> ${normalizedInput.boost ? "ON" : "OFF"}</div>
+          <div><strong>Slip:</strong> ${slipCurrent}° / ${slipTarget}°</div>
           <div><strong>Speed:</strong> ${speed.toFixed(1)} м/с</div>
           <div><strong>Forward:</strong> ${forwardSpeed.toFixed(1)} м/с</div>
           <div><strong>Strafe:</strong> ${rightSpeed.toFixed(1)} м/с</div>
           <div><strong>Angular:</strong> ${(state.angularVelocity * 57.3).toFixed(1)} °/с</div>
+          <div><strong>Limiter:</strong> ${telemetry.limiter_active ? "ON" : "off"}</div>
           <div><strong>Pos:</strong> ${state.position.x.toFixed(0)}, ${state.position.y.toFixed(0)} м</div>
         `;
       }

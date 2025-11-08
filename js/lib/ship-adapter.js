@@ -18,6 +18,72 @@
     default: "Sport"
   };
 
+  const HANDLING_STYLE_DEFAULTS = {
+    drift: {
+      handling_style: "Drift",
+      speed_limiter_ratio: 0.9,
+      handling: {
+        stab_gain: 1.1,
+        stab_damping: 0.9,
+        slip_threshold_deg: 6,
+        slip_limit_deg: 18,
+        slip_correction_gain: 1.6,
+        nose_follow_input: 0.2,
+        anticipation_gain: 0.12,
+        oversteer_bias: 0.12,
+        bias: 0.15,
+        responsiveness: 1.3,
+        slip_target_max: 18,
+        traction_control: 0.15,
+        cap_main_coupled: 0.6,
+        lat_authority: 0.95
+      },
+      jerk: { forward_mps3: 220, lateral_mps3: 180 }
+    },
+    balanced: {
+      handling_style: "Balanced",
+      speed_limiter_ratio: 0.85,
+      handling: {
+        stab_gain: 0.9,
+        stab_damping: 1.2,
+        slip_threshold_deg: 8,
+        slip_limit_deg: 12,
+        slip_correction_gain: 1.1,
+        nose_follow_input: 0.35,
+        anticipation_gain: 0.1,
+        oversteer_bias: 0,
+        bias: 0,
+        responsiveness: 0.9,
+        slip_target_max: 12,
+        traction_control: 0.4,
+        cap_main_coupled: 0.7,
+        lat_authority: 0.85
+      },
+      jerk: { forward_mps3: 160, lateral_mps3: 130 }
+    },
+    grip: {
+      handling_style: "Grip",
+      speed_limiter_ratio: 0.8,
+      handling: {
+        stab_gain: 0.7,
+        stab_damping: 1.6,
+        slip_threshold_deg: 4,
+        slip_limit_deg: 8,
+        slip_correction_gain: 1.4,
+        nose_follow_input: 0.5,
+        anticipation_gain: 0.08,
+        oversteer_bias: -0.12,
+        bias: -0.15,
+        responsiveness: 0.7,
+        slip_target_max: 8,
+        traction_control: 0.75,
+        cap_main_coupled: 0.8,
+        lat_authority: 0.8
+      },
+      jerk: { forward_mps3: 140, lateral_mps3: 120 }
+    }
+  };
+
   function parseShipConfig(config, sourcePath = "unknown") {
     const version = detectVersion(config);
     return version.startsWith("0.6") ? mapV06(config, sourcePath) : mapV053(config, sourcePath);
@@ -39,6 +105,7 @@
     const type = config.classification?.type || "fighter";
     const sizeType = config.classification?.size_type || `${size} ${type}`.trim();
     const preset = config.assist?.preset || recommendPreset(sizeType);
+    const assistProfile = buildAssistProfile(config, preset);
 
     const accel = extractAccel(config.performance);
     const mainDrive = config.propulsion?.main_drive;
@@ -63,7 +130,8 @@
       tags: Array.isArray(config.tags) ? config.tags : [],
       sourceLabel: sourcePath?.startsWith("local:")
         ? "Импортированный JSON"
-        : `Файл: ${sourcePath || "—"}`
+        : `Файл: ${sourcePath || "—"}`,
+      assist: assistProfile
     };
   }
 
@@ -74,6 +142,7 @@
     const typePhrase = parts.slice(1).join(" ") || "freighter";
     const sizeType = `${size} ${typePhrase}`.trim();
     const preset = recommendPreset(sizeType);
+    const assistProfile = buildAssistProfile(config, preset);
 
     const angular = toAngularFromRcs(config.rcs);
     const sprite =
@@ -104,7 +173,8 @@
       tags: Array.isArray(config.tags) ? config.tags : [size, typePhrase],
       sourceLabel: sourcePath?.startsWith("local:")
         ? "Импортированный JSON (v0.5.3)"
-        : `Legacy: ${sourcePath || "—"}`
+        : `Legacy: ${sourcePath || "—"}`,
+      assist: assistProfile
     };
   }
 
@@ -177,6 +247,68 @@
     }
     const deg = (omega * 180) / Math.PI;
     return { pitch: deg, yaw: deg, roll: deg };
+  }
+
+  function buildAssistProfile(config, fallbackPreset) {
+    const assist = config.assist || {};
+    const styleKey = (assist.handling_style || assist.handlingStyle || "Balanced").toLowerCase();
+    const base = HANDLING_STYLE_DEFAULTS[styleKey] || HANDLING_STYLE_DEFAULTS.balanced;
+    const handling = {
+      stab_gain: clampNumber(assist.handling?.stab_gain ?? base.handling.stab_gain, 0.3, 1.6),
+      stab_damping: clampNumber(assist.handling?.stab_damping ?? base.handling.stab_damping, 0.5, 3),
+      slip_threshold_deg: clampNumber(assist.handling?.slip_threshold_deg ?? base.handling.slip_threshold_deg, 2, 25),
+      slip_limit_deg: clampNumber(assist.handling?.slip_limit_deg ?? base.handling.slip_limit_deg, 4, 30),
+      slip_correction_gain: clampNumber(assist.handling?.slip_correction_gain ?? base.handling.slip_correction_gain, 0.2, 3),
+      nose_follow_input: clampNumber(assist.handling?.nose_follow_input ?? base.handling.nose_follow_input, 0, 1),
+      anticipation_gain: clampNumber(assist.handling?.anticipation_gain ?? base.handling.anticipation_gain, 0, 0.5),
+      oversteer_bias: clampNumber(assist.handling?.oversteer_bias ?? base.handling.oversteer_bias, -0.5, 0.5),
+      bias: clampNumber(assist.handling?.bias ?? base.handling.bias, -1, 1),
+      responsiveness: clampNumber(assist.handling?.responsiveness ?? base.handling.responsiveness, 0.1, 2.5),
+      slip_target_max: clampNumber(
+        assist.handling?.slip_target_max ?? base.handling.slip_target_max ?? base.handling.slip_limit_deg,
+        2,
+        40
+      ),
+      traction_control: clampNumber(assist.handling?.traction_control ?? base.handling.traction_control, 0, 1),
+      cap_main_coupled: clampNumber(assist.handling?.cap_main_coupled ?? base.handling.cap_main_coupled, 0.2, 1),
+      lat_authority: clampNumber(assist.handling?.lat_authority ?? base.handling.lat_authority, 0.2, 1)
+    };
+    const jerkDefaults = base.jerk || { forward_mps3: 160, lateral_mps3: 120 };
+    const jerk = {
+      forward_mps3: clampNumber(assist.jerk?.forward_mps3 ?? jerkDefaults.forward_mps3, 10, 800),
+      lateral_mps3: clampNumber(assist.jerk?.lateral_mps3 ?? jerkDefaults.lateral_mps3, 10, 600)
+    };
+    return {
+      preset: assist.preset || fallbackPreset,
+      handling_style: capitalize(base.handling_style),
+      speed_limiter_ratio: clampNumber(
+        assist.speed_limiter_ratio ?? assist.speed_limiter ?? base.speed_limiter_ratio ?? 0.85,
+        0.2,
+        1
+      ),
+      handling,
+      jerk
+    };
+  }
+
+  function clampNumber(value, min, max) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return min;
+    }
+    if (value < min) {
+      return min;
+    }
+    if (value > max) {
+      return max;
+    }
+    return value;
+  }
+
+  function capitalize(value) {
+    if (!value) {
+      return "";
+    }
+    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
   }
 
   return {

@@ -2,17 +2,25 @@
 
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require("./coupled-controller.js"));
   } else {
-    root.U2PilotAssist = factory();
+    root.U2PilotAssist = factory(root.U2CoupledController);
   }
-})(typeof self !== "undefined" ? self : this, function () {
+})(typeof self !== "undefined" ? self : this, function (CoupledController) {
   const EPS_V = 0.05;
 
   function createPilotAssist(summary = {}) {
     let randomVec = { x: 0, y: 0 };
     let randomTimer = 0;
     let randomTorque = 0;
+    const coupled = CoupledController?.createCoupledController
+      ? CoupledController.createCoupledController({
+          handling: summary.assist?.handling,
+          jerk: summary.assist?.jerk,
+          speedLimiterRatio: summary.assist?.speed_limiter_ratio,
+          profileName: summary.assist?.handling_style
+        })
+      : null;
 
     function update(state, input, env) {
       const dt = env.dt_sec ?? 1 / 60;
@@ -29,8 +37,9 @@
         return {
           command: brakeResult.command,
           mode: "Brake",
-          autopilot,
-          brake: true
+          autopilot: false,
+          brake: true,
+          telemetry: buildTelemetry(state, summary.assist)
         };
       }
 
@@ -49,11 +58,26 @@
         randomTorque = 0;
       }
 
-      if (modeCoupled) {
-        const slip = projectSlip(state);
-        const gain = summary.assist?.stab_gain ?? 0.8;
-        command.thrustForward = clamp(command.thrustForward - slip.forward * gain, -1, 1);
-        command.thrustRight = clamp(command.thrustRight - slip.right * gain, -1, 1);
+      let telemetry = null;
+      if (modeCoupled && coupled) {
+        const coupledResult = coupled.update(
+          state,
+          {
+            thrustForward: clamp(input.thrustForward ?? 0, -1, 1),
+            thrustRight: clamp(input.thrustRight ?? 0, -1, 1),
+            turn: clamp(input.torque ?? 0, -1, 1)
+          },
+          {
+            dt_sec: dt,
+            c_mps: env.c_mps ?? 10000,
+            vmax_runtime: env.c_mps ?? 10000,
+            inertia: env.inertia ?? 1
+          }
+        );
+        command.thrustForward = coupledResult.command.thrustForward;
+        command.thrustRight = coupledResult.command.thrustRight;
+        command.torque = coupledResult.command.torque;
+        telemetry = coupledResult.telemetry;
       }
 
       command.thrustForward = clamp(command.thrustForward + randomVec.y, -1, 1);
@@ -64,7 +88,8 @@
         command,
         mode: modeCoupled ? "Coupled" : "Decoupled",
         autopilot,
-        brake: false
+        brake: false,
+        telemetry: telemetry || buildTelemetry(state, summary.assist)
       };
     }
 
@@ -106,18 +131,6 @@
     return { command, finished };
   }
 
-  function projectSlip(state) {
-    const vel = state.velocity;
-    const fwdVec = { x: Math.cos(state.orientation), y: Math.sin(state.orientation) };
-    const rightVec = { x: Math.sin(state.orientation), y: -Math.cos(state.orientation) };
-    const forwardSpeed = vel.x * fwdVec.x + vel.y * fwdVec.y;
-    const rightSpeed = vel.x * rightVec.x + vel.y * rightVec.y;
-    return {
-      forward: clamp(forwardSpeed / 80, -1, 1),
-      right: clamp(rightSpeed / 80, -1, 1)
-    };
-  }
-
   function toAccel(thrust_kN, mass_kg) {
     if (!thrust_kN || !mass_kg) {
       return 0;
@@ -138,6 +151,26 @@
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
+  }
+
+  function buildTelemetry(state, assist = {}) {
+    const beta = calcSlip(state) * (180 / Math.PI);
+    return {
+      slip_deg: beta,
+      slip_target_deg: 0,
+      profile: assist?.handling_style || "Balanced",
+      limiter_active: false
+    };
+  }
+
+  function calcSlip(state) {
+    const vel = state.velocity || { x: 0, y: 0 };
+    const orientation = state.orientation || 0;
+    const fwd = { x: Math.cos(orientation), y: Math.sin(orientation) };
+    const right = { x: Math.sin(orientation), y: -Math.cos(orientation) };
+    const forwardSpeed = vel.x * fwd.x + vel.y * fwd.y;
+    const rightSpeed = vel.x * right.x + vel.y * right.y;
+    return Math.atan2(rightSpeed, forwardSpeed || 1e-6);
   }
 
   return {
