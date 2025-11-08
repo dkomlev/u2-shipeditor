@@ -2,7 +2,7 @@
   "meta": {
     "id": "medium_freighter_02",
     "name": "medium freighter 2",
-    "version": "0.6",
+    "version": "0.6.3",
     "author": "U2 Team"
   },
   "classification": {
@@ -33,13 +33,11 @@
     "CS": 3
   },
   "performance": {
-    "scm_mps": 190,
-    "vmax_mps": 950,
-    "accel_fwd_mps2": 30,
-    "strafe_mps2": {
-      "x": 30,
-      "y": 30,
-      "z": 30
+    "accel_profile": {
+      "forward_mps2": 22,
+      "backward_mps2": 12,
+      "lateral_mps2": 10,
+      "vertical_mps2": 8
     },
     "angular_dps": {
       "pitch": 35,
@@ -53,8 +51,20 @@
     }
   },
   "propulsion": {
-    "main_thrust_MN": 6,
-    "rcs_budget_MN": 1.8
+    "main_drive": {
+      "max_thrust_kN": 4000,
+      "sustained_thrust_kN": 3000,
+      "max_power_MW": 65
+    },
+    "rcs": {
+      "forward_kN": 650,
+      "backward_kN": 520,
+      "lateral_kN": 420,
+      "vertical_kN": 350,
+      "pitch_kNm": 240,
+      "yaw_kNm": 210,
+      "roll_kNm": 280
+    }
   },
   "power_opt": {
     "reactor_MW": 87.5,
@@ -79,9 +89,8 @@
     "stab_gain": 0.95,
     "oversteer_bias": -0.3,
     "cap_main_coupled": 0.55,
-    "speed_limiter_ratio": 0.6,
-    "brake_g_sustain": 2.5,
-    "brake_g_boost": 3.5,
+    "brake_g_sustain": 2.4,
+    "brake_g_boost": 3.3,
     "boost_duration_s": 5,
     "boost_cooldown_s": 25
   },
@@ -94,5 +103,10 @@
       "height": 512
     }
   },
-  "notes_opt": "medium freighter"
+  "notes_opt": "medium freighter",
+  "tags": [
+    "medium",
+    "freighter",
+    "hauler"
+  ]
 }

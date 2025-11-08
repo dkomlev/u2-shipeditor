@@ -2,7 +2,7 @@
   "meta": {
     "id": "fighter_v05",
     "name": "small fighter 06",
-    "version": "0.6",
+    "version": "0.6.3",
     "author": "U2 Team"
   },
   "classification": {
@@ -33,13 +33,11 @@
     "CS": 2
   },
   "performance": {
-    "scm_mps": 230,
-    "vmax_mps": 1200,
-    "accel_fwd_mps2": 80,
-    "strafe_mps2": {
-      "x": 80,
-      "y": 80,
-      "z": 80
+    "accel_profile": {
+      "forward_mps2": 78,
+      "backward_mps2": 34,
+      "lateral_mps2": 52,
+      "vertical_mps2": 40
     },
     "angular_dps": {
       "pitch": 90,
@@ -53,8 +51,20 @@
     }
   },
   "propulsion": {
-    "main_thrust_MN": 4.4,
-    "rcs_budget_MN": 1.32
+    "main_drive": {
+      "max_thrust_kN": 5360,
+      "sustained_thrust_kN": 3620,
+      "max_power_MW": 28
+    },
+    "rcs": {
+      "forward_kN": 1500,
+      "backward_kN": 1100,
+      "lateral_kN": 1800,
+      "vertical_kN": 1300,
+      "pitch_kNm": 420,
+      "yaw_kNm": 380,
+      "roll_kNm": 620
+    }
   },
   "power_opt": {
     "reactor_MW": 24,
@@ -79,9 +89,8 @@
     "stab_gain": 0.75,
     "oversteer_bias": 0.2,
     "cap_main_coupled": 0.85,
-    "speed_limiter_ratio": 0.8,
-    "brake_g_sustain": 6.9340702482499115,
-    "brake_g_boost": 9.78927564458811,
+    "brake_g_sustain": 6.9,
+    "brake_g_boost": 9.8,
     "boost_duration_s": 3,
     "boost_cooldown_s": 12
   },
@@ -94,5 +103,10 @@
       "height": 1024
     }
   },
-  "notes_opt": ""
+  "notes_opt": "",
+  "tags": [
+    "small",
+    "fighter",
+    "sport"
+  ]
 }

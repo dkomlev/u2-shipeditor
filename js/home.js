@@ -277,10 +277,12 @@
     );
 
     writeField("ship-mass", formatNumber(summary.mass_t, "т"));
-    writeField("ship-scm", formatNumber(summary.scm_mps, "м/с"));
-    writeField("ship-vmax", formatNumber(summary.vmax_mps, "м/с"));
+    writeField("ship-forward-accel", formatNumber(summary.forward_accel_mps2, "м/с²"));
+    writeField("ship-lateral-accel", formatNumber(summary.lateral_accel_mps2, "м/с²"));
     writeField("ship-angular", formatAngular(summary.angular_dps));
+    writeField("ship-thrust-weight", formatRatio(summary.thrust_to_weight, "g"));
     writeField("ship-maneuver", summary.performanceHint || "—");
+    writeField("ship-power", formatNumber(summary.power_MW, "МВт"));
 
     updatePreview(summary.sprite);
     updateStatusTimestamp();
@@ -565,6 +567,14 @@
     const formatted = value.toLocaleString("ru-RU", {
       maximumFractionDigits: value >= 10 ? 0 : 1
     });
+    return suffix ? `${formatted} ${suffix}` : formatted;
+  }
+
+  function formatRatio(value, suffix) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    const formatted = value >= 10 ? value.toFixed(1) : value.toFixed(2);
     return suffix ? `${formatted} ${suffix}` : formatted;
   }
 

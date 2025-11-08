@@ -46,19 +46,24 @@
             <div class="stat-hint">Сухая, ShipConfig</div>
           </div>
           <div class="stat">
-            <div class="stat-label">SCM</div>
-            <div class="stat-value" data-field="ship-scm">—</div>
-            <div class="stat-hint">м/с</div>
+            <div class="stat-label">Forward accel</div>
+            <div class="stat-value" data-field="ship-forward-accel">—</div>
+            <div class="stat-hint">м/с²</div>
           </div>
           <div class="stat">
-            <div class="stat-label">Vmax</div>
-            <div class="stat-value" data-field="ship-vmax">—</div>
-            <div class="stat-hint">м/с</div>
+            <div class="stat-label">Lateral accel</div>
+            <div class="stat-value" data-field="ship-lateral-accel">—</div>
+            <div class="stat-hint">м/с²</div>
           </div>
           <div class="stat">
             <div class="stat-label">Pitch/Yaw/Roll</div>
             <div class="stat-value" data-field="ship-angular">—</div>
             <div class="stat-hint">град/с</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Thrust / Weight</div>
+            <div class="stat-value" data-field="ship-thrust-weight">—</div>
+            <div class="stat-hint">ratio</div>
           </div>
         </div>
         <div class="cta-row">
@@ -91,9 +96,9 @@
         </article>
         <article class="action-card">
           <h3>Документация</h3>
-          <p>Архетипы, вспомогательные таблицы, заметки по миграции ShipConfig 0.5.3 → 0.6.</p>
+          <p>Архетипы, вспомогательные таблицы, заметки по миграции ShipConfig 0.5.3 → 0.6.3.</p>
           <footer>
-            <a class="link-btn" href="docs/U2%20%D0%90%D1%80%D1%85%D0%B5%D1%82%D0%B8%D0%BF%D1%8B%20%D0%BA%D0%BE%D1%80%D0%B0%D0%B1%D0%BB%D0%B5%D0%B9%20v0.6.md" target="_blank" rel="noopener">Открыть wiki</a>
+            <a class="link-btn" href="docs/U2%20%E2%80%94%20%D0%90%D1%80%D1%85%D0%B5%D1%82%D0%B8%D0%BF%D1%8B%20%D0%BA%D0%BE%D1%80%D0%B0%D0%B1%D0%BB%D0%B5%D0%B9%20v0.6.3.md" target="_blank" rel="noopener">Открыть wiki</a>
           </footer>
         </article>
       </div>
@@ -105,8 +110,8 @@
         <ul class="details-card__list">
           <li><span>Архетип</span><span data-field="ship-archetype">—</span></li>
           <li><span>Масса</span><span data-field="ship-mass">—</span></li>
-          <li><span>SCM</span><span data-field="ship-scm">—</span></li>
-          <li><span>Vmax</span><span data-field="ship-vmax">—</span></li>
+          <li><span>Forward accel</span><span data-field="ship-forward-accel">—</span></li>
+          <li><span>Lateral accel</span><span data-field="ship-lateral-accel">—</span></li>
           <li><span>Манёвры</span><span data-field="ship-maneuver">—</span></li>
         </ul>
       </article>
@@ -116,6 +121,7 @@
           <li><span>Источник</span><span data-field="ship-source">—</span></li>
           <li><span>Версия</span><span data-field="ship-version">—</span></li>
           <li><span>Assist preset</span><span data-field="ship-preset">—</span></li>
+          <li><span>Power (MW)</span><span data-field="ship-power">—</span></li>
           <li><span>Статус</span><span data-field="status-message">—</span></li>
           <li><span>Обновлено</span><span data-field="status-timestamp">—:—</span></li>
         </ul>

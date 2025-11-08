@@ -2,7 +2,7 @@
   "meta": {
     "id": "72dd6a60-3123-4795-bb77-e85f1f73b88f",
     "name": "medium-figher-1",
-    "version": "0.6.0",
+    "version": "0.6.3",
     "author": ""
   },
   "classification": {
@@ -32,13 +32,11 @@
     "CS": 3
   },
   "performance": {
-    "scm_mps": 250,
-    "vmax_mps": 1230,
-    "accel_fwd_mps2": 70,
-    "strafe_mps2": {
-      "x": 70,
-      "y": 70,
-      "z": 70
+    "accel_profile": {
+      "forward_mps2": 66,
+      "backward_mps2": 30,
+      "lateral_mps2": 45,
+      "vertical_mps2": 38
     },
     "angular_dps": {
       "pitch": 105,
@@ -52,8 +50,20 @@
     }
   },
   "propulsion": {
-    "main_thrust_MN": 5.6,
-    "rcs_budget_MN": 1.68
+    "main_drive": {
+      "max_thrust_kN": 6850,
+      "sustained_thrust_kN": 4300,
+      "max_power_MW": 34
+    },
+    "rcs": {
+      "forward_kN": 1350,
+      "backward_kN": 1150,
+      "lateral_kN": 1550,
+      "vertical_kN": 1200,
+      "pitch_kNm": 380,
+      "yaw_kNm": 350,
+      "roll_kNm": 580
+    }
   },
   "power_opt": {
     "reactor_MW": null,
@@ -78,9 +88,8 @@
     "stab_gain": 0.8,
     "oversteer_bias": 0,
     "cap_main_coupled": 0.75,
-    "speed_limiter_ratio": 0.75,
-    "brake_g_sustain": 5.5,
-    "brake_g_boost": 8,
+    "brake_g_sustain": 5.4,
+    "brake_g_boost": 7.8,
     "boost_duration_s": 3,
     "boost_cooldown_s": 14
   },
@@ -93,5 +102,10 @@
       "height": 512
     }
   },
-  "notes_opt": null
+  "notes_opt": null,
+  "tags": [
+    "medium",
+    "fighter",
+    "muscle"
+  ]
 }

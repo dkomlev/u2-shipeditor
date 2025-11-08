@@ -40,6 +40,9 @@
     const sizeType = config.classification?.size_type || `${size} ${type}`.trim();
     const preset = config.assist?.preset || recommendPreset(sizeType);
 
+    const accel = extractAccel(config.performance);
+    const mainDrive = config.propulsion?.main_drive;
+    const thrustToWeight = computeThrustToWeight(mainDrive?.max_thrust_kN, config.mass?.dry_t);
     return {
       id: config.meta?.id || config.meta?.name || "ship",
       name: config.meta?.name || "Без имени",
@@ -50,13 +53,14 @@
       preset,
       presetSource: config.assist?.preset ? "config" : "recommended",
       mass_t: config.mass?.dry_t ?? null,
-      scm_mps: config.performance?.scm_mps ?? null,
-      vmax_mps: config.performance?.vmax_mps ?? null,
-      accel_fwd_mps2: config.performance?.accel_fwd_mps2 ?? null,
-      strafe_mps2: config.performance?.strafe_mps2 ?? null,
+      forward_accel_mps2: accel.forward,
+      lateral_accel_mps2: accel.lateral,
+      thrust_to_weight: thrustToWeight,
       angular_dps: config.performance?.angular_dps ?? null,
-      performanceHint: buildPerformanceHint(config.performance),
+      performanceHint: buildPerformanceHint(accel),
       sprite: resolveSprite(config.media?.sprite, sourcePath),
+      power_MW: mainDrive?.max_power_MW ?? config.power_opt?.reactor_MW ?? null,
+      tags: Array.isArray(config.tags) ? config.tags : [],
       sourceLabel: sourcePath?.startsWith("local:")
         ? "Импортированный JSON"
         : `Файл: ${sourcePath || "—"}`
@@ -87,13 +91,17 @@
       preset,
       presetSource: "recommended",
       mass_t: config.mass?.mass_kg ? config.mass.mass_kg / 1000 : null,
-      scm_mps: null,
-      vmax_mps: null,
-      accel_fwd_mps2: null,
-      strafe_mps2: null,
+      forward_accel_mps2: config.performance?.accel_fwd_mps2 ?? null,
+      lateral_accel_mps2: config.performance?.strafe_mps2?.x ?? null,
+      thrust_to_weight: computeThrustToWeight(config.propulsion?.main_thrust_MN ? config.propulsion.main_thrust_MN * 1000 : null, config.mass?.dry_t),
       angular_dps: angular,
-      performanceHint: config.g_limits?.profile ? `G-profile: ${config.g_limits.profile}` : null,
+      performanceHint: buildPerformanceHint({
+        forward: config.performance?.accel_fwd_mps2 ?? null,
+        lateral: config.performance?.strafe_mps2?.x ?? null
+      }),
       sprite,
+      power_MW: config.power_opt?.reactor_MW ?? null,
+      tags: Array.isArray(config.tags) ? config.tags : [size, typePhrase],
       sourceLabel: sourcePath?.startsWith("local:")
         ? "Импортированный JSON (v0.5.3)"
         : `Legacy: ${sourcePath || "—"}`
@@ -125,13 +133,38 @@
     return null;
   }
 
-  function buildPerformanceHint(perf) {
-    if (!perf) {
+  function extractAccel(perf) {
+    if (perf?.accel_profile) {
+      return {
+        forward: perf.accel_profile.forward_mps2 ?? null,
+        lateral: perf.accel_profile.lateral_mps2 ?? null
+      };
+    }
+    return {
+      forward: perf?.accel_fwd_mps2 ?? null,
+      lateral: perf?.strafe_mps2?.x ?? null
+    };
+  }
+
+  function computeThrustToWeight(maxThrust_kN, mass_t) {
+    if (!maxThrust_kN || !mass_t) {
       return null;
     }
-    const accel = perf.accel_fwd_mps2 ? `${perf.accel_fwd_mps2.toFixed(0)} м/с² accel` : null;
-    const strafe = perf.strafe_mps2?.x ? `Strafe ${perf.strafe_mps2.x.toFixed(0)} м/с²` : null;
-    return [accel, strafe].filter(Boolean).join(" · ") || null;
+    const thrustN = maxThrust_kN * 1000;
+    const weightN = mass_t * 1000 * 9.80665;
+    if (!weightN) {
+      return null;
+    }
+    return thrustN / weightN;
+  }
+
+  function buildPerformanceHint(accel) {
+    if (!accel) {
+      return null;
+    }
+    const forward = typeof accel.forward === "number" ? `${accel.forward.toFixed(0)} м/с² fwd` : null;
+    const lateral = typeof accel.lateral === "number" ? `${accel.lateral.toFixed(0)} м/с² lat` : null;
+    return [forward, lateral].filter(Boolean).join(" · ") || null;
   }
 
   function toAngularFromRcs(rcs) {
