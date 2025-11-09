@@ -9,6 +9,8 @@ const __dirname = path.dirname(__filename);
 
 const schemaPath = path.join(__dirname, '../config/shipconfig.schema.json');
 const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+// Remove $schema reference to avoid Ajv trying to load external meta-schema
+if (schema && schema.$schema) delete schema.$schema;
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validate = ajv.compile(schema);
