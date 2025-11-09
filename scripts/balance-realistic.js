@@ -29,13 +29,13 @@ const ED_REFERENCE = {
   corvette: { mass_t: 900, pitch_dps: 10, yaw_dps: 8, roll_dps: 20, angular_accel_dps2: 1.5 }
 };
 
-// Adaptive angular acceleration based on ship mass (Elite Dangerous style)
+// Adaptive angular acceleration based on ship mass (Elite Dangerous style, realistic)
 function getAngularAccelForMass(mass_t) {
-  if (mass_t < 150) return 8;   // Viper/light fighter: 8°/s² (~50s to 400°/s, realistic)
-  if (mass_t < 300) return 6;   // Vulture/heavy fighter: 6°/s² (~60s to 360°/s)
-  if (mass_t < 600) return 4;   // Python/medium: 4°/s² (~30s to 120°/s)
-  if (mass_t < 1500) return 2;  // Type-9/freighter: 2°/s² (~30s to 60°/s)
-  return 1.2;                   // Capital: 1.2°/s² (~40s to 50°/s)
+  if (mass_t < 150) return 4;    // Light fighter: 4°/s² (reduced 2x for realism)
+  if (mass_t < 300) return 3;    // Heavy fighter: 3°/s²
+  if (mass_t < 600) return 1.5;  // Medium: 1.5°/s²
+  if (mass_t < 1500) return 0.5; // Freighter: 0.5°/s² (10x slower, very slow turn)
+  return 0.3;                    // Capital: 0.3°/s² (order of magnitude slower)
 }
 
 // Calculate torque needed for target angular acceleration

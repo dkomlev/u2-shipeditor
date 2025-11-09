@@ -51,8 +51,8 @@
   },
   "propulsion": {
     "main_drive": {
-      "max_thrust_kN": 19500,
-      "sustained_thrust_kN": 14625,
+      "max_thrust_kN": 29250,
+      "sustained_thrust_kN": 21938,
       "max_power_MW": 113.7
     },
     "rcs": {
@@ -60,9 +60,9 @@
       "backward_kN": 7150,
       "lateral_kN": 11375,
       "vertical_kN": 9100,
-      "pitch_kNm": 1985,
-      "yaw_kNm": 2481,
-      "roll_kNm": 1323
+      "pitch_kNm": 744,
+      "yaw_kNm": 930,
+      "roll_kNm": 496
     }
   },
   "power_opt": {
@@ -109,7 +109,7 @@
     "jerk": {
       "forward_mps3": 220,
       "lateral_mps3": 180,
-      "angular_rps3": 0.3
+      "angular_rps3": 0.12
     },
     "brake": {
       "g_sustain": 5.5,

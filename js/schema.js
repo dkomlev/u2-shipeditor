@@ -34,7 +34,7 @@ const DEFAULT_ASSIST = {
     traction_speed_ref: 320,
     nose_align_gain: 0.15
   },
-  jerk: { forward_mps3: 160, lateral_mps3: 130, angular_rps3: 0.3 },
+  jerk: { forward_mps3: 160, lateral_mps3: 130, angular_rps3: 0.25 },
   brake: { g_sustain: 4.5, g_boost: 6.5, boost_duration_s: 3.5, boost_cooldown_s: 15 }
 };
 
