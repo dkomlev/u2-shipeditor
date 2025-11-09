@@ -14,6 +14,7 @@
     let randomTimer = 0;
     let randomTorque = 0;
     let boostCooldownTimer = 0;
+    let prevAngularAccel = 0;  // Track angular acceleration for jerk limiting
     const coupled = CoupledController?.createCoupledController
       ? CoupledController.createCoupledController({
           handling: summary.assist?.handling,
@@ -88,6 +89,14 @@
         command.thrustRight = coupledResult.command.thrustRight;
         command.torque = coupledResult.command.torque;
         telemetry = coupledResult.telemetry;
+        prevAngularAccel = 0;  // Reset in Coupled mode
+      } else {
+        // Decoupled: apply angular jerk limiting for smooth rotation ramp
+        const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 0.8;
+        const targetAngularAccel = command.torque;  // Normalized -1..1
+        const jerkResult = applyAngularJerk(prevAngularAccel, targetAngularAccel, angularJerkLimit, dt);
+        prevAngularAccel = jerkResult.value;
+        command.torque = jerkResult.value;
       }
 
       command.thrustForward = clamp(command.thrustForward + randomVec.y, -1, 1);
@@ -222,6 +231,21 @@
     const forwardSpeed = vel.x * fwd.x + vel.y * fwd.y;
     const rightSpeed = vel.x * right.x + vel.y * right.y;
     return Math.atan2(rightSpeed, forwardSpeed || 1e-6);
+  }
+
+  function applyAngularJerk(prev, target, jerkLimit, dt) {
+    if (!jerkLimit || dt <= 0) {
+      return { value: target, clamped: false };
+    }
+    const delta = target - prev;
+    const maxDelta = jerkLimit * dt;
+    if (delta > maxDelta) {
+      return { value: prev + maxDelta, clamped: true };
+    }
+    if (delta < -maxDelta) {
+      return { value: prev - maxDelta, clamped: true };
+    }
+    return { value: target, clamped: false };
   }
 
   return {

@@ -135,7 +135,8 @@
   function sanitizeJerk(raw = {}) {
     return {
       forward_mps3: clamp(raw.forward_mps3 ?? 160, 10, 800),
-      lateral_mps3: clamp(raw.lateral_mps3 ?? 120, 10, 600)
+      lateral_mps3: clamp(raw.lateral_mps3 ?? 120, 10, 600),
+      angular_rps3: clamp(raw.angular_rps3 ?? 0.5, 0.1, 5)  // Elite Dangerous style: smooth 3-4s ramp
     };
   }
 
