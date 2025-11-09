@@ -43,24 +43,28 @@ export function migrateToV06(old) {
     ?? (old.mass?.mass_kg ? old.mass.mass_kg / 1000 : undefined)
     ?? (old.mass_kg ? old.mass_kg / 1000 : undefined)
     ?? 0;
-  const size = inferSize(rawLength, massDry);
-  const type = mapType(old.role || old.type || old.classification?.type || old.meta?.class);
-  const stealth = type === 'recon' ? 'stealth' : (old.stealth ? 'stealth' : 'standard');
-  const variant = old.variant ?? old.meta?.variant ?? '';
+  const size = old.classification?.size ?? inferSize(rawLength, massDry);
+  const type = old.classification?.type ?? mapType(old.role || old.type || old.meta?.class);
+  const stealth = old.classification?.stealth ?? (type === 'recon' ? 'stealth' : (old.stealth ? 'stealth' : 'standard'));
+  const variant = old.classification?.variant ?? old.variant ?? old.meta?.variant ?? '';
 
   const length_m = Number(rawLength ?? 0) || 0;
   const width_m = Number(rawWidth ?? 0) || 0;
   const height_m = Number(rawHeight ?? 0) || 0;
   const hull_radius_m = old.geometry?.hull_radius_m ?? old.hull_radius_m ?? hullRadiusFrom(length_m, width_m);
 
+  // v0.6.3: migrate from scm_mps/vmax_mps to accel_profile
+  const a_fwd = old.a_fwd ?? old.performance?.accel_fwd_mps2 ?? old.performance?.accel_profile?.forward_mps2 ?? 0;
+  const a_back = old.a_back ?? old.performance?.accel_profile?.backward_mps2 ?? (a_fwd * 0.4);
+  const ax = old.ax ?? old.performance?.strafe_mps2?.x ?? old.performance?.accel_profile?.lateral_mps2 ?? 0;
+  const ay = old.ay ?? old.performance?.strafe_mps2?.y ?? old.performance?.accel_profile?.vertical_mps2 ?? 0;
+  
   const perf = {
-    scm_mps: old.SCM ?? old.scm ?? old.performance?.scm_mps ?? 0,
-    vmax_mps: old.Vmax ?? old.vmax ?? old.performance?.vmax_mps ?? 0,
-    accel_fwd_mps2: old.a_fwd ?? old.performance?.accel_fwd_mps2 ?? 0,
-    strafe_mps2: {
-      x: old.ax ?? old.performance?.strafe_mps2?.x ?? 0,
-      y: old.ay ?? old.performance?.strafe_mps2?.y ?? 0,
-      z: old.az ?? old.performance?.strafe_mps2?.z ?? 0
+    accel_profile: {
+      forward_mps2: a_fwd,
+      backward_mps2: a_back,
+      lateral_mps2: ax,
+      vertical_mps2: ay
     },
     angular_dps: {
       pitch: old.pitch ?? old.performance?.angular_dps?.pitch ?? 0,
@@ -76,17 +80,35 @@ export function migrateToV06(old) {
   assist.preset = presetName;
   assist = clampAssistToPhysics(assist, perf);
 
+  // v0.6.3: split propulsion into main_drive and rcs
   const thrustMN =
     old.propulsion?.main_thrust_MN ??
+    (old.propulsion?.main_drive?.max_thrust_kN ? old.propulsion.main_drive.max_thrust_kN / 1000 : undefined) ??
     (old.propulsion?.main_engine_thrust_max_N ? old.propulsion.main_engine_thrust_max_N / 1e6 : undefined) ??
     old.thrust_main ??
-    (((massDry ?? 0) * (old.a_fwd ?? 0)) / 1e6) ??
+    (((massDry ?? 0) * a_fwd) / 1000) ??
     0;
+  
+  const sustainedThrust_kN = old.propulsion?.main_drive?.sustained_thrust_kN 
+    ?? (thrustMN * 1000 * 0.75);
+  const maxPower_MW = old.propulsion?.main_drive?.max_power_MW 
+    ?? old.power_opt?.reactor_MW 
+    ?? null;
+
   const rcsMN =
     old.propulsion?.rcs_budget_MN ??
     (old.rcs?.strafe_thrust_N ? old.rcs.strafe_thrust_N / 1e6 : undefined) ??
     old.rcs_MN ??
     0;
+
+  // Distribute RCS budget across axes (if not already detailed)
+  const rcs_fwd_kN = old.propulsion?.rcs?.forward_kN ?? (rcsMN * 1000 * 0.3);
+  const rcs_back_kN = old.propulsion?.rcs?.backward_kN ?? (rcsMN * 1000 * 0.2);
+  const rcs_lat_kN = old.propulsion?.rcs?.lateral_kN ?? (rcsMN * 1000 * 0.35);
+  const rcs_vert_kN = old.propulsion?.rcs?.vertical_kN ?? (rcsMN * 1000 * 0.25);
+  const rcs_pitch_kNm = old.propulsion?.rcs?.pitch_kNm ?? (rcsMN * 1000 * 0.3 * (length_m || 20) * 0.3);
+  const rcs_yaw_kNm = old.propulsion?.rcs?.yaw_kNm ?? (rcsMN * 1000 * 0.28 * (length_m || 20) * 0.3);
+  const rcs_roll_kNm = old.propulsion?.rcs?.roll_kNm ?? (rcsMN * 1000 * 0.42 * (width_m || 15) * 0.3);
 
   const spritePath = old.sprite?.path || old.media?.sprite?.path || '';
   const sprite = {
@@ -102,11 +124,14 @@ export function migrateToV06(old) {
 
   const hardpoints = old.hardpoints_opt || old.hardpoints || {};
 
+  // v0.6.3: generate tags from classification
+  const tags = old.tags || [size, type, stealth === 'stealth' ? 'stealth' : 'standard'];
+
   return {
     meta: {
       id: old.id || old.meta?.id || (crypto?.randomUUID?.() || String(Date.now())),
       name: old.name || old.meta?.name || 'Unnamed',
-      version: old.version || old.meta?.version || '0.6.0',
+      version: '0.6.3',
       author: old.meta?.author || old.author || ''
     },
     classification: { size, type, size_type: sizeType(size,type), stealth, variant },
@@ -116,8 +141,20 @@ export function migrateToV06(old) {
     signatures: { IR: old.IR ?? old.signatures?.IR ?? 3, EM: old.EM ?? old.signatures?.EM ?? 3, CS: old.CS ?? old.signatures?.CS ?? 3 },
     performance: perf,
     propulsion: {
-      main_thrust_MN: Number(thrustMN ?? 0),
-      rcs_budget_MN:  Number(rcsMN ?? 0)
+      main_drive: {
+        max_thrust_kN: Number(thrustMN * 1000),
+        sustained_thrust_kN: Number(sustainedThrust_kN),
+        max_power_MW: maxPower_MW
+      },
+      rcs: {
+        forward_kN: Number(rcs_fwd_kN),
+        backward_kN: Number(rcs_back_kN),
+        lateral_kN: Number(rcs_lat_kN),
+        vertical_kN: Number(rcs_vert_kN),
+        pitch_kNm: Number(rcs_pitch_kNm),
+        yaw_kNm: Number(rcs_yaw_kNm),
+        roll_kNm: Number(rcs_roll_kNm)
+      }
     },
     power_opt: {
       reactor_MW: old.power_opt?.reactor_MW ?? old.reactor_MW ?? old.power?.reactor_MW ?? null,
@@ -132,7 +169,9 @@ export function migrateToV06(old) {
     },
     weapons: { summary: old.weapons_summary ?? old.weapons?.summary ?? '' },
     assist,
+    tags,
     media: { sprite },
-    notes_opt: old.notes ?? old.meta?.notes ?? old.description ?? ''
+    notes_opt: old.notes ?? old.meta?.notes ?? old.description ?? '',
+    legacy_v053: old.legacy_v053 ?? {}
   };
 }
