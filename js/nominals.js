@@ -1,3 +1,5 @@
+import { cloneAssistPreset, applyStealthMode } from './presets.js';
+
 // Typicals derived from SC/ED averages, adjusted to U2 envelopes (SI units)
 // main_thrust_MN ~= mass_t * accel_fwd_mps2 / 1000
 
@@ -293,6 +295,16 @@ export function applyNominals(ship, mode='fill-empty'){
   if (!out.geometry.hull_radius_m) {
     out.geometry.hull_radius_m = computeHullRadius(out.geometry.length_m, out.geometry.width_m);
   }
-  if (!out.assist?.preset) out.assist = { ...(out.assist||{}), preset: n.preset };
+  if (!out.assist?.handling) {
+    const presetName = n.preset || 'Balanced';
+    let assist = cloneAssistPreset(presetName);
+    if (out.classification.stealth === 'stealth' && out.classification.type !== 'recon') {
+      assist = applyStealthMode(assist, out.classification.type);
+    }
+    assist.preset = presetName;
+    out.assist = assist;
+  } else if (!out.assist.preset) {
+    out.assist.preset = n.preset;
+  }
   return out;
 }

@@ -52,14 +52,33 @@
   },
   "assist": {
     "preset": "Recon",
-    "slip_lim_deg": 6,
-    "stab_gain": 0.98,
-    "oversteer_bias": 0.0,
-    "cap_main_coupled": 0.4,
-    "speed_limiter_ratio": 0.65,
-    "brake_g_sustain": 3.5,
-    "brake_g_boost": 5.0,
-    "boost_duration_s": 3.0,
-    "boost_cooldown_s": 12
+    "handling_style": "Balanced",
+    "speed_limiter_ratio": 0.7,
+    "handling": {
+      "stab_gain": 0.98,
+      "stab_damping": 1.2,
+      "slip_threshold_deg": 7,
+      "slip_limit_deg": 10,
+      "slip_correction_gain": 1.2,
+      "nose_follow_input": 0.35,
+      "anticipation_gain": 0.1,
+      "oversteer_bias": 0,
+      "bias": 0,
+      "responsiveness": 0.9,
+      "slip_target_max": 10,
+      "traction_control": 0.55,
+      "cap_main_coupled": 0.6,
+      "lat_authority": 0.85
+    },
+    "jerk": {
+      "forward_mps3": 180,
+      "lateral_mps3": 150
+    },
+    "brake": {
+      "g_sustain": 3.5,
+      "g_boost": 5.0,
+      "boost_duration_s": 3.0,
+      "boost_cooldown_s": 12
+    }
   }
 }

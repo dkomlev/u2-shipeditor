@@ -293,22 +293,8 @@
               <select id="assistPreset" data-bind="assist.preset"></select>
             </label>
             <label class="field">
-              <span>slip_lim_deg</span>
-              <input type="number" step="0.1" data-bind="assist.slip_lim_deg" />
-            </label>
-            <label class="field">
-              <span>stab_gain</span>
-              <input type="number" step="0.01" data-bind="assist.stab_gain" />
-            </label>
-          </div>
-          <div class="field-grid three">
-            <label class="field">
-              <span>oversteer_bias</span>
-              <input type="number" step="0.01" data-bind="assist.oversteer_bias" />
-            </label>
-            <label class="field">
-              <span>cap_main_coupled</span>
-              <input type="number" step="0.01" data-bind="assist.cap_main_coupled" />
+              <span>Handling Style</span>
+              <select id="assistStyle" data-bind="assist.handling_style"></select>
             </label>
             <label class="field">
               <span>speed_limiter_ratio</span>
@@ -317,22 +303,120 @@
           </div>
           <div class="field-grid three">
             <label class="field">
-              <span>brake_g_sustain</span>
-              <input type="number" step="0.1" data-bind="assist.brake_g_sustain" />
+              <span>stab_gain</span>
+              <input type="number" step="0.01" data-bind="assist.handling.stab_gain" />
             </label>
             <label class="field">
-              <span>brake_g_boost</span>
-              <input type="number" step="0.1" data-bind="assist.brake_g_boost" />
+              <span>stab_damping</span>
+              <input type="number" step="0.01" data-bind="assist.handling.stab_damping" />
             </label>
             <label class="field">
-              <span>boost_duration_s</span>
-              <input type="number" step="0.1" data-bind="assist.boost_duration_s" />
+              <span>slip_threshold_deg</span>
+              <input type="number" step="0.1" data-bind="assist.handling.slip_threshold_deg" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>slip_limit_deg</span>
+              <input type="number" step="0.1" data-bind="assist.handling.slip_limit_deg" />
+            </label>
+            <label class="field">
+              <span>slip_target_max</span>
+              <input type="number" step="0.1" data-bind="assist.handling.slip_target_max" />
+            </label>
+            <label class="field">
+              <span>slip_correction_gain</span>
+              <input type="number" step="0.01" data-bind="assist.handling.slip_correction_gain" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>nose_follow_input</span>
+              <input type="number" step="0.01" data-bind="assist.handling.nose_follow_input" />
+            </label>
+            <label class="field">
+              <span>anticipation_gain</span>
+              <input type="number" step="0.01" data-bind="assist.handling.anticipation_gain" />
+            </label>
+            <label class="field">
+              <span>responsiveness</span>
+              <input type="number" step="0.01" data-bind="assist.handling.responsiveness" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>oversteer_bias</span>
+              <input type="number" step="0.01" data-bind="assist.handling.oversteer_bias" />
+            </label>
+            <label class="field">
+              <span>bias</span>
+              <input type="number" step="0.01" data-bind="assist.handling.bias" />
+            </label>
+            <label class="field">
+              <span>traction_control</span>
+              <input type="number" step="0.01" data-bind="assist.handling.traction_control" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>cap_main_coupled</span>
+              <input type="number" step="0.01" data-bind="assist.handling.cap_main_coupled" />
+            </label>
+            <label class="field">
+              <span>lat_authority</span>
+              <input type="number" step="0.01" data-bind="assist.handling.lat_authority" />
+            </label>
+            <label class="field">
+              <span>jerk forward (m/s³)</span>
+              <input type="number" step="1" data-bind="assist.jerk.forward_mps3" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>jerk lateral (m/s³)</span>
+              <input type="number" step="1" data-bind="assist.jerk.lateral_mps3" />
+            </label>
+            <label class="field">
+              <span>Brake g sustain</span>
+              <input type="number" step="0.1" data-bind="assist.brake.g_sustain" />
+            </label>
+            <label class="field">
+              <span>Brake g boost</span>
+              <input type="number" step="0.1" data-bind="assist.brake.g_boost" />
             </label>
           </div>
           <div class="field-grid two">
             <label class="field">
+              <span>boost_duration_s</span>
+              <input type="number" step="0.1" data-bind="assist.brake.boost_duration_s" />
+            </label>
+            <label class="field">
               <span>boost_cooldown_s</span>
-              <input type="number" step="0.1" data-bind="assist.boost_cooldown_s" />
+              <input type="number" step="0.1" data-bind="assist.brake.boost_cooldown_s" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>turn_authority</span>
+              <input type="number" step="0.05" data-bind="assist.handling.turn_authority" />
+            </label>
+            <label class="field">
+              <span>turn_assist</span>
+              <input type="number" step="0.05" data-bind="assist.handling.turn_assist" />
+            </label>
+            <label class="field">
+              <span>traction_floor</span>
+              <input type="number" step="0.05" data-bind="assist.handling.traction_floor" />
+            </label>
+          </div>
+          <div class="field-grid three">
+            <label class="field">
+              <span>traction_speed_ref</span>
+              <input type="number" step="10" data-bind="assist.handling.traction_speed_ref" />
+            </label>
+            <label class="field">
+              <span>nose_align_gain</span>
+              <input type="number" step="0.05" data-bind="assist.handling.nose_align_gain" />
             </label>
           </div>
         </article>

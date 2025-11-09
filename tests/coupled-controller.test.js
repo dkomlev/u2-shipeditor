@@ -19,26 +19,22 @@ function makeState(overrides = {}) {
   };
 }
 
-function testSlipResponse() {
+function testTurnAllowsTorque() {
   const controller = CoupledController.createCoupledController({
     handling: {
-      slip_limit_deg: 15,
-      slip_threshold_deg: 5,
-      responsiveness: 1.2,
-      traction_control: 0.1,
-      lat_authority: 0.9,
-      cap_main_coupled: 0.6
+      turn_authority: 0.8,
+      turn_assist: 0.4
     },
     profileName: "Drift"
   });
   const result = controller.update(
     makeState(),
-    { thrustForward: 0.8, turn: 1 },
+    { thrustForward: 0.5, turn: 0.8 },
     { dt_sec: 1 / 60, c_mps: 10000, vmax_runtime: 10000, inertia: 1 }
   );
 
-  assert.ok(result.command.thrustRight > 0.01, "controller should apply lateral thrust for positive turn");
-  assert.ok(result.telemetry.slip_target_deg > 0, "target slip should be positive for right turn");
+  assert.ok(result.command.torque > 0.05, "controller should generate torque when turn input is applied");
+  assert.ok(Math.abs(result.telemetry.slip_target_deg) < 0.01, "default slip target should stay near zero without manual strafe");
 }
 
 function testLimiterReducesForward() {
@@ -76,10 +72,11 @@ function testManualStrafePassThrough() {
     { dt_sec: 1 / 60, c_mps: 10000, vmax_runtime: 10000, inertia: 1 }
   );
   assert.ok(result.command.thrustRight > 0.9, "manual strafe input should pass through in Coupled mode");
+  assert.ok(result.telemetry.slip_target_deg > 5, "positive strafe should request positive slip");
 }
 
 function run() {
-  testSlipResponse();
+  testTurnAllowsTorque();
   testLimiterReducesForward();
   testManualStrafePassThrough();
   console.log("coupled-controller.test.js: OK");

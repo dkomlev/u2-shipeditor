@@ -1,5 +1,5 @@
 import { sizeType } from './schema.js';
-import { ASSIST, ARCH_PRESET, applyStealthMode } from './presets.js';
+import { ARCH_PRESET, applyStealthMode, cloneAssistPreset } from './presets.js';
 import { clampAssistToPhysics } from './validator.js';
 
 const mapType = (s) => {
@@ -70,8 +70,10 @@ export function migrateToV06(old) {
     angular_accel_opt: { pitch: null, yaw: null, roll: null }
   };
 
-  let assist = ASSIST[pickPreset(size, type)];
+  const presetName = pickPreset(size, type);
+  let assist = cloneAssistPreset(presetName);
   if (stealth === 'stealth' && type !== 'recon') assist = applyStealthMode(assist, type);
+  assist.preset = presetName;
   assist = clampAssistToPhysics(assist, perf);
 
   const thrustMN =

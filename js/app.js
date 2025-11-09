@@ -1,5 +1,5 @@
 import { SIZE, TYPE, PRESET, sizeType, buildEmptyConfig } from './schema.js';
-import { ARCH_PRESET, ASSIST, applyStealthMode } from './presets.js';
+import { ARCH_PRESET, HANDLING_STYLES, applyStealthMode, cloneAssistPreset } from './presets.js';
 import { validateSize, suggestSize, clampAssistToPhysics } from './validator.js';
 import { applyNominals, getNominals, RCS_RATIO, computeHullRadius } from './nominals.js';
 
@@ -39,6 +39,7 @@ function cacheDom() {
     typeSelect: document.getElementById('typeSelect'),
     stealthSelect: document.getElementById('stealthSelect'),
     assistPreset: document.getElementById('assistPreset'),
+    assistStyle: document.getElementById('assistStyle'),
     sizeTypeChip: document.getElementById('sizeTypeChip'),
     envelopeChip: document.getElementById('envelopeChip'),
     presetChip: document.getElementById('presetChip'),
@@ -88,7 +89,8 @@ function cacheDom() {
 function initSelectOptions() {
   SIZE.forEach(size => dom.sizeSelect.add(new Option(size, size)));
   TYPE.forEach(type => dom.typeSelect.add(new Option(type, type)));
-  PRESET.forEach(preset => dom.assistPreset.add(new Option(preset, preset)));
+  PRESET.forEach(preset => dom.assistPreset?.add(new Option(preset, preset)));
+  HANDLING_STYLES.forEach(style => dom.assistStyle?.add(new Option(style, style)));
 }
 
 function registerBindings() {
@@ -526,8 +528,8 @@ function assistIntegrity(ship) {
   const accel = Number(ship.performance?.accel_fwd_mps2);
   if (!(accel > 0)) return null;
   const g = accel / 9.80665;
-  const sustain = Number(ship.assist?.brake_g_sustain);
-  const boost = Number(ship.assist?.brake_g_boost);
+  const sustain = Number(ship.assist?.brake?.g_sustain);
+  const boost = Number(ship.assist?.brake?.g_boost);
   if (!(sustain > 0 && boost > 0)) return null;
   const over = (value) => value > g * 1.3;
   if (!over(sustain) && !over(boost)) {
@@ -537,7 +539,7 @@ function assistIntegrity(ship) {
     label: 'Assist торможение',
     severity: 'warn',
     message: 'Значения выше физического лимита',
-    path: 'assist.brake_g_sustain'
+    path: 'assist.brake.g_sustain'
   };
 }
 
@@ -599,7 +601,9 @@ function runAutoDerive() {
     syncClassification();
     changes.push(`size→${suggested}`);
   }
-  state.ship.assist = clampAssistToPhysics(state.ship.assist, state.ship.performance);
+  state.ship.assist = normalizeAssistStructure(
+    clampAssistToPhysics(state.ship.assist, state.ship.performance)
+  );
   changes.push('assist clamp');
   renderAll();
   logStatus(changes.length ? `Auto: ${changes.join(', ')}` : 'Auto: без изменений', changes.length ? 'success' : 'info');
@@ -843,13 +847,18 @@ function getSuggestedPreset() {
 }
 
 function applyAssistPresetByName(name, { skipRender = false } = {}) {
-  const presetValues = { ...(ASSIST[name] || ASSIST.Balanced) };
-  const tuned = state.ship.classification.stealth === 'stealth' && state.ship.classification.type !== 'recon'
-    ? applyStealthMode(presetValues, state.ship.classification.type)
-    : presetValues;
-  const clamped = clampAssistToPhysics({ ...state.ship.assist, ...tuned, preset: name }, state.ship.performance);
-  state.ship.assist = clamped;
+  const presetValues = cloneAssistPreset(name);
+  const tuned =
+    state.ship.classification.stealth === "stealth" && state.ship.classification.type !== "recon"
+      ? applyStealthMode(presetValues, state.ship.classification.type)
+      : presetValues;
+  tuned.preset = name;
+  const clamped = clampAssistToPhysics(tuned, state.ship.performance);
+  state.ship.assist = normalizeAssistStructure(clamped);
   if (dom.assistPreset) dom.assistPreset.value = name;
+  if (dom.assistStyle && state.ship.assist?.handling_style) {
+    dom.assistStyle.value = state.ship.assist.handling_style;
+  }
   if (!skipRender) {
     renderAll();
   }
@@ -957,7 +966,9 @@ function ensureShipShape(source) {
     version: source?.meta?.version || undefined,
     author: source?.meta?.author || undefined
   });
-  return mergeDeep(base, source || {});
+  const merged = mergeDeep(base, source || {});
+  merged.assist = normalizeAssistStructure(merged.assist);
+  return merged;
 }
 
 function mergeDeep(target, source) {
@@ -974,6 +985,50 @@ function mergeDeep(target, source) {
     }
   });
   return output;
+}
+
+function normalizeAssistStructure(rawAssist) {
+  const presetName = rawAssist?.preset || 'Balanced';
+  const base = cloneAssistPreset(presetName);
+  let merged = mergeDeep(base, rawAssist || {});
+  const legacyMap = [
+    ['slip_lim_deg', 'handling.slip_limit_deg'],
+    ['stab_gain', 'handling.stab_gain'],
+    ['oversteer_bias', 'handling.oversteer_bias'],
+    ['cap_main_coupled', 'handling.cap_main_coupled'],
+    ['brake_g_sustain', 'brake.g_sustain'],
+    ['brake_g_boost', 'brake.g_boost'],
+    ['boost_duration_s', 'brake.boost_duration_s'],
+    ['boost_cooldown_s', 'brake.boost_cooldown_s']
+  ];
+  legacyMap.forEach(([legacyKey, targetPath]) => {
+    if (rawAssist && rawAssist[legacyKey] !== undefined) {
+      setPath(merged, targetPath, rawAssist[legacyKey]);
+    }
+    if (merged[legacyKey] !== undefined) {
+      delete merged[legacyKey];
+    }
+  });
+  if (!merged.handling) {
+    merged.handling = cloneAssistPreset('Balanced').handling;
+  }
+  if (!merged.jerk) {
+    merged.jerk = cloneAssistPreset('Balanced').jerk;
+  }
+  if (!merged.brake) {
+    merged.brake = cloneAssistPreset('Balanced').brake;
+  }
+  if (!merged.handling.slip_target_max) {
+    merged.handling.slip_target_max = merged.handling.slip_limit_deg;
+  }
+  merged.preset = presetName;
+  merged.handling_style = HANDLING_STYLES.includes(merged.handling_style) ? merged.handling_style : merged.handling_style || base.handling_style;
+  const defaults = cloneAssistPreset(merged.preset);
+  merged.speed_limiter_ratio = typeof merged.speed_limiter_ratio === 'number' ? merged.speed_limiter_ratio : defaults.speed_limiter_ratio;
+  merged.handling = mergeDeep(defaults.handling, merged.handling);
+  merged.jerk = mergeDeep(defaults.jerk, merged.jerk);
+  merged.brake = mergeDeep(defaults.brake, merged.brake);
+  return merged;
 }
 
 function ensureHullRadiusValue() {

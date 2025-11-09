@@ -9,6 +9,37 @@ export const PRESET = ["Balanced","Sport","Rally","Muscle","F1","Industrial","Tr
 
 export const sizeType = (size, type) => `${size} ${type}`;
 
+const DEFAULT_ASSIST = {
+  preset: "Balanced",
+  handling_style: "Balanced",
+  speed_limiter_ratio: 0.85,
+  handling: {
+    stab_gain: 0.9,
+    stab_damping: 1.2,
+    slip_threshold_deg: 8,
+    slip_limit_deg: 12,
+    slip_correction_gain: 1.1,
+    nose_follow_input: 0.35,
+    anticipation_gain: 0.1,
+    oversteer_bias: 0,
+    bias: 0,
+    responsiveness: 0.9,
+    slip_target_max: 12,
+    traction_control: 0.4,
+    cap_main_coupled: 0.75,
+    lat_authority: 0.85,
+    turn_authority: 0.75,
+    turn_assist: 0.35,
+    traction_floor: 0.3,
+    traction_speed_ref: 320,
+    nose_align_gain: 0.15
+  },
+  jerk: { forward_mps3: 160, lateral_mps3: 130 },
+  brake: { g_sustain: 4.5, g_boost: 6.5, boost_duration_s: 3.5, boost_cooldown_s: 15 }
+};
+
+const cloneAssistDefaults = () => JSON.parse(JSON.stringify(DEFAULT_ASSIST));
+
 export function buildEmptyConfig({
   id = (crypto?.randomUUID?.() || String(Date.now())),
   name = "New Ship",
@@ -38,12 +69,7 @@ export function buildEmptyConfig({
     payload: { cargo_scu: 0, crew: "1" },
     hardpoints_opt: { fixed: [], gimbals: [], turrets: [], missiles: [] },
     weapons: { summary: "" },
-    assist: {
-      preset: "Sport", slip_lim_deg: 15, stab_gain: 0.75, oversteer_bias: 0.2,
-      cap_main_coupled: 0.85, speed_limiter_ratio: 0.8,
-      brake_g_sustain: 7.0, brake_g_boost: 10.0,
-      boost_duration_s: 3.0, boost_cooldown_s: 12
-    },
+    assist: cloneAssistDefaults(),
     media: {
       sprite: { name: "", dataUrl: "", path: "", width: null, height: null }
     },

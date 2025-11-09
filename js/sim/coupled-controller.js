@@ -51,14 +51,15 @@
       const throttleInput = clamp(input.thrustForward ?? 0, -1, 1);
       const strafeInput = clamp(input.thrustRight ?? 0, -1, 1);
 
-      const betaTarget = solveSlipTarget(turnInput, speed, handling);
+      const betaTarget = solveSlipTarget(strafeInput, speed, handling);
       const slipError = betaTarget - beta;
 
       const manualLatAccel = strafeInput * lateralCap;
+      const turnAssistAccel = turnInput * lateralCap * (handling.turn_assist || 0);
       const slipCorrection = computeSlipCorrection(slipError, handling, lateralCap);
       const smoothedSlip = applyJerk(prevSlipAccel, slipCorrection, jerk.lateral_mps3, dt);
       prevSlipAccel = smoothedSlip;
-      const combinedLatAccel = clamp(manualLatAccel + smoothedSlip, -lateralCap, lateralCap);
+      const combinedLatAccel = clamp(manualLatAccel + turnAssistAccel + smoothedSlip, -lateralCap, lateralCap);
       const thrustRight = lateralCap > 0 ? clamp(combinedLatAccel / lateralCap, -1, 1) : 0;
 
       let forwardAccelTarget = solveForwardAccel(throttleInput, forwardCap, backwardCap, handling);
@@ -108,7 +109,12 @@
       slip_target_max: clamp(raw.slip_target_max ?? raw.slip_limit_deg ?? 12, 2, 40),
       traction_control: clamp(raw.traction_control ?? 0.4, 0, 1),
       cap_main_coupled: clamp(raw.cap_main_coupled ?? 0.7, 0.2, 1),
-      lat_authority: clamp(raw.lat_authority ?? 0.85, 0.2, 1)
+      lat_authority: clamp(raw.lat_authority ?? 0.85, 0.2, 1),
+      turn_authority: clamp(raw.turn_authority ?? 0.7, 0, 2),
+      turn_assist: clamp(raw.turn_assist ?? 0.3, 0, 1),
+      traction_floor: clamp(raw.traction_floor ?? 0.25, 0, 1),
+      traction_speed_ref: clamp(raw.traction_speed_ref ?? 320, 50, 1000),
+      nose_align_gain: clamp(raw.nose_align_gain ?? 0.1, 0, 1)
     };
   }
 
@@ -119,29 +125,27 @@
     };
   }
 
-  function solveSlipTarget(turnInput, speed, handling) {
-    if (turnInput === 0) {
-      return 0;
-    }
-    const absTurn = Math.abs(turnInput);
-    const slipLimit = handling.slip_limit_deg * DEG2RAD;
-    const slipThreshold = handling.slip_threshold_deg * DEG2RAD;
-    let betaTarget = handling.slip_target_max * DEG2RAD;
-    betaTarget *= handling.responsiveness * absTurn;
-    betaTarget = clamp(betaTarget, 0, slipLimit);
-    const direction = Math.sign(turnInput);
-    betaTarget *= direction;
-    betaTarget += handling.oversteer_bias * slipLimit;
+function solveSlipTarget(strafeInput, speed, handling) {
+  const slipLimit = handling.slip_limit_deg * DEG2RAD;
+  const slipThreshold = handling.slip_threshold_deg * DEG2RAD;
+  let betaTarget = (handling.bias ?? 0) * slipLimit;
+  betaTarget += (handling.responsiveness * strafeInput) * handling.slip_target_max * DEG2RAD;
+  betaTarget = clamp(betaTarget, -slipLimit, slipLimit);
 
-    const tractionFactor = 1 - handling.traction_control * Math.min(speed / 300, 1);
-    betaTarget *= clamp(tractionFactor, 0.2, 1);
+  const tractionRef = handling.traction_speed_ref || 300;
+  const tractionFloor = handling.traction_floor ?? 0.2;
+  const tractionFactor = Math.max(
+    tractionFloor,
+    1 - handling.traction_control * Math.min(speed / tractionRef, 1)
+  );
+  betaTarget *= tractionFactor;
 
-    if (Math.abs(betaTarget) < slipThreshold && slipThreshold > 0) {
-      const ratio = Math.abs(betaTarget) / slipThreshold;
-      betaTarget *= 0.5 + 0.5 * ratio;
-    }
-    return betaTarget;
+  if (Math.abs(betaTarget) < slipThreshold && slipThreshold > 0) {
+    const ratio = Math.abs(betaTarget) / slipThreshold;
+    betaTarget *= 0.5 + 0.5 * ratio;
   }
+  return betaTarget;
+}
 
   function computeSlipCorrection(slipError, handling, lateralCap) {
     if (!lateralCap) {
@@ -174,18 +178,20 @@
     return accel * (1 - over);
   }
 
-  function solveYawCommand(turnInput, slipError, angularVelocity, yawAccelCap, handling) {
-    const slipTerm = handling.slip_correction_gain * slipError;
-    const leadTerm = handling.anticipation_gain * angularVelocity;
-    const manualTerm = handling.stab_gain * turnInput;
-    const damping = -handling.stab_damping * angularVelocity;
-    const biasTerm = handling.bias * 0.1;
-    const alphaCmd = slipTerm + leadTerm + manualTerm + damping + biasTerm;
-    if (yawAccelCap <= 0) {
-      return clamp(alphaCmd, -1, 1);
-    }
-    return clamp(alphaCmd / yawAccelCap, -1, 1);
+function solveYawCommand(turnInput, slipError, angularVelocity, yawAccelCap, handling) {
+  const leadTerm = handling.anticipation_gain * angularVelocity;
+  const manualTerm = (handling.turn_authority ?? handling.stab_gain ?? 1) * turnInput;
+  const damping = -handling.stab_damping * angularVelocity;
+  const biasTerm = handling.bias * 0.1;
+  const alignGain = handling.nose_align_gain ?? 0;
+  const alignScale = Math.abs(turnInput) < 0.2 ? 1 : 0.2;
+  const alignTerm = alignGain * alignScale * slipError;
+  const alphaCmd = leadTerm + manualTerm + damping + biasTerm + alignTerm;
+  if (yawAccelCap <= 0) {
+    return clamp(alphaCmd, -1, 1);
   }
+  return clamp(alphaCmd / yawAccelCap, -1, 1);
+}
 
   function calcSlip(state) {
     const vel = state.velocity || { x: 0, y: 0 };
