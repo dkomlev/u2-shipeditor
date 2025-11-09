@@ -2,7 +2,7 @@
   "meta": {
     "id": "Crusader C2 Hercules Starlifter",
     "name": "Crusader C2 Hercules Starlifter",
-    "version": "0.6.5",
+    "version": "0.6.3",
     "author": "Star Citizen"
   },
   "classification": {
@@ -32,13 +32,11 @@
     "CS": 4
   },
   "performance": {
-    "scm_mps": 170,
-    "vmax_mps": 900,
-    "accel_fwd_mps2": 25,
-    "strafe_mps2": {
-      "x": 25,
-      "y": 25,
-      "z": 25
+    "accel_profile": {
+      "forward_mps2": 25,
+      "backward_mps2": 10,
+      "lateral_mps2": 25,
+      "vertical_mps2": 25
     },
     "angular_dps": {
       "pitch": 25,
@@ -52,8 +50,20 @@
     }
   },
   "propulsion": {
-    "main_thrust_MN": 58.48,
-    "rcs_budget_MN": 11.7
+    "main_drive": {
+      "max_thrust_kN": 58480,
+      "sustained_thrust_kN": 43860,
+      "max_power_MW": 818.6
+    },
+    "rcs": {
+      "forward_kN": 3510,
+      "backward_kN": 2340,
+      "lateral_kN": 4094.9999999999995,
+      "vertical_kN": 2925,
+      "pitch_kNm": 98982,
+      "yaw_kNm": 92383.20000000001,
+      "roll_kNm": 103194
+    }
   },
   "power_opt": {
     "reactor_MW": 818.6,
@@ -101,13 +111,18 @@
       "lateral_mps3": 90
     },
     "brake": {
-      "g_sustain": 2.1668969525780977,
-      "g_boost": 3.059148638933785,
+      "g_sustain": 2.5,
+      "g_boost": 3.5,
       "boost_duration_s": 5,
       "boost_cooldown_s": 25
     },
     "preset": "Truck"
   },
+  "tags": [
+    "heavy",
+    "freighter",
+    "standard"
+  ],
   "media": {
     "sprite": {
       "name": "IMG_4624.png",
@@ -117,5 +132,6 @@
       "height": 872
     }
   },
-  "notes_opt": ""
+  "notes_opt": "",
+  "legacy_v053": {}
 }

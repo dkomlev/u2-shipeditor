@@ -2,7 +2,7 @@
   "meta": {
     "id": "Anvil F7C Hornet",
     "name": "Anvil F7C Hornet",
-    "version": "0.6.5",
+    "version": "0.6.3",
     "author": "Star Citizen"
   },
   "classification": {
@@ -32,13 +32,11 @@
     "CS": 2
   },
   "performance": {
-    "scm_mps": 230,
-    "vmax_mps": 1200,
-    "accel_fwd_mps2": 80,
-    "strafe_mps2": {
-      "x": 80,
-      "y": 80,
-      "z": 80
+    "accel_profile": {
+      "forward_mps2": 80,
+      "backward_mps2": 32,
+      "lateral_mps2": 80,
+      "vertical_mps2": 80
     },
     "angular_dps": {
       "pitch": 90,
@@ -52,8 +50,20 @@
     }
   },
   "propulsion": {
-    "main_thrust_MN": 5.76,
-    "rcs_budget_MN": 1.73
+    "main_drive": {
+      "max_thrust_kN": 5760,
+      "sustained_thrust_kN": 4320,
+      "max_power_MW": 25.2
+    },
+    "rcs": {
+      "forward_kN": 519,
+      "backward_kN": 346,
+      "lateral_kN": 605.5,
+      "vertical_kN": 432.5,
+      "pitch_kNm": 4398.525,
+      "yaw_kNm": 4105.29,
+      "roll_kNm": 5449.5
+    }
   },
   "power_opt": {
     "reactor_MW": 25.2,
@@ -101,13 +111,18 @@
       "lateral_mps3": 180
     },
     "brake": {
-      "g_sustain": 6.9340702482499115,
-      "g_boost": 9.78927564458811,
+      "g_sustain": 7,
+      "g_boost": 10,
       "boost_duration_s": 3,
       "boost_cooldown_s": 12
     },
     "preset": "Sport"
   },
+  "tags": [
+    "small",
+    "fighter",
+    "standard"
+  ],
   "media": {
     "sprite": {
       "name": "IMG_4623.png",
@@ -117,5 +132,6 @@
       "height": 2042
     }
   },
-  "notes_opt": ""
+  "notes_opt": "",
+  "legacy_v053": {}
 }

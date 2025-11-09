@@ -2,7 +2,7 @@
   "meta": {
     "id": "alien-heavy-fighter",
     "name": "Alien Heavy Fighter",
-    "version": "0.6.5",
+    "version": "0.6.3",
     "author": "Space Clash"
   },
   "classification": {
@@ -32,13 +32,11 @@
     "CS": 3
   },
   "performance": {
-    "scm_mps": 210,
-    "vmax_mps": 1075,
-    "accel_fwd_mps2": 70,
-    "strafe_mps2": {
-      "x": 70,
-      "y": 70,
-      "z": 70
+    "accel_profile": {
+      "forward_mps2": 70,
+      "backward_mps2": 28,
+      "lateral_mps2": 70,
+      "vertical_mps2": 70
     },
     "angular_dps": {
       "pitch": 105,
@@ -52,8 +50,20 @@
     }
   },
   "propulsion": {
-    "main_thrust_MN": 5.25,
-    "rcs_budget_MN": 1.57
+    "main_drive": {
+      "max_thrust_kN": 5250,
+      "sustained_thrust_kN": 3937.5,
+      "max_power_MW": 26.3
+    },
+    "rcs": {
+      "forward_kN": 471,
+      "backward_kN": 314,
+      "lateral_kN": 549.5,
+      "vertical_kN": 392.5,
+      "pitch_kNm": 4239,
+      "yaw_kNm": 3956.3999999999996,
+      "roll_kNm": 5934.599999999999
+    }
   },
   "power_opt": {
     "reactor_MW": 26.3,
@@ -108,6 +118,11 @@
     },
     "preset": "Muscle"
   },
+  "tags": [
+    "medium",
+    "fighter",
+    "standard"
+  ],
   "media": {
     "sprite": {
       "name": "Alien Heavy Fighter.jpg",
@@ -117,5 +132,6 @@
       "height": 512
     }
   },
-  "notes_opt": ""
+  "notes_opt": "",
+  "legacy_v053": {}
 }
