@@ -74,7 +74,7 @@
       count: 100,
       density: 0.4,
       radius_min: 50,
-      radius_max: 5000,
+      radius_max: 800,  // Reduced from 5000 for better visibility
       velocity_min: 5,
       velocity_max: 50
     },

@@ -44,7 +44,7 @@
         strafe_to_slip_gain: 0.55,
         nose_align_gain: 0.08
       },
-      jerk: { forward_mps3: 220, lateral_mps3: 180 }
+      jerk: { forward_mps3: 220, lateral_mps3: 180, angular_rps3: 0.25 }
     },
     balanced: {
       handling_style: "Balanced",
@@ -71,7 +71,7 @@
         strafe_to_slip_gain: 0.4,
         nose_align_gain: 0.18
       },
-      jerk: { forward_mps3: 160, lateral_mps3: 130 }
+      jerk: { forward_mps3: 160, lateral_mps3: 130, angular_rps3: 0.12 }
     },
     grip: {
       handling_style: "Grip",
@@ -98,7 +98,7 @@
         strafe_to_slip_gain: 0.35,
         nose_align_gain: 0.32
       },
-      jerk: { forward_mps3: 140, lateral_mps3: 120 }
+      jerk: { forward_mps3: 140, lateral_mps3: 120, angular_rps3: 0.08 }
     }
   };
 
@@ -311,10 +311,11 @@
       strafe_to_slip_gain: clampNumber(assist.handling?.strafe_to_slip_gain ?? base.handling.strafe_to_slip_gain ?? 0.3, 0, 2),
       nose_align_gain: clampNumber(assist.handling?.nose_align_gain ?? base.handling.nose_align_gain ?? 0.1, 0, 1)
     };
-    const jerkDefaults = base.jerk || { forward_mps3: 160, lateral_mps3: 120 };
+    const jerkDefaults = base.jerk || { forward_mps3: 160, lateral_mps3: 120, angular_rps3: 0.8 };
     const jerk = {
       forward_mps3: clampNumber(assist.jerk?.forward_mps3 ?? jerkDefaults.forward_mps3, 10, 800),
-      lateral_mps3: clampNumber(assist.jerk?.lateral_mps3 ?? jerkDefaults.lateral_mps3, 10, 600)
+      lateral_mps3: clampNumber(assist.jerk?.lateral_mps3 ?? jerkDefaults.lateral_mps3, 10, 600),
+      angular_rps3: clampNumber(assist.jerk?.angular_rps3 ?? jerkDefaults.angular_rps3, 0.01, 5)
     };
     return {
       preset: assist.preset || fallbackPreset,

@@ -282,8 +282,8 @@
       let collisionOverlay = appConfig.collision.overlay; // boolean
 
       // Note: Input controller manages its own coupled/autopilot state internally
-      // Initial values: coupled=true, autopilot=true (as per input.js defaults)
-      console.log("Input controller configured with defaults: coupled=true, autopilot=true");
+      // Initial values: coupled=true, autopilot=false (now disabled by default to prevent drift)
+      console.log("Input controller configured: coupled=true, autopilot=false");
 
       // Additional key bindings for FlightTest
       document.addEventListener("keydown", (e) => {
@@ -364,6 +364,11 @@
       function draw(ctx, canvas, state, asteroids, collisions, config) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Render grid (from sim-demo.html)
+        if (config.render.grid?.enabled) {
+          drawGrid(ctx, canvas, state, config.render.grid);
+        }
+
         // Render asteroids first (background)
         asteroidLib.renderAsteroids(ctx, asteroids, state.camera || state, 0.4);
         
@@ -394,6 +399,67 @@
             0.4
           );
         }
+      }
+
+      function drawGrid(ctx, canvas, state, gridConfig) {
+        const cameraPos = state.camera?.position ?? state.position;
+        const scale = 0.4; // pixels per meter
+        const spacingWorld = gridConfig.cell || 250; // meters
+        const spacingPx = spacingWorld * scale;
+        
+        const halfWidthWorld = canvas.width / 2 / scale;
+        const halfHeightWorld = canvas.height / 2 / scale;
+        const minX = cameraPos.x - halfWidthWorld - spacingWorld;
+        const maxX = cameraPos.x + halfWidthWorld + spacingWorld;
+        const minY = cameraPos.y - halfHeightWorld - spacingWorld;
+        const maxY = cameraPos.y + halfHeightWorld + spacingWorld;
+        
+        const firstX = Math.floor(minX / spacingWorld) * spacingWorld;
+        const firstY = Math.floor(minY / spacingWorld) * spacingWorld;
+        
+        const halfWidthPx = canvas.width / 2;
+        const halfHeightPx = canvas.height / 2;
+
+        ctx.save();
+        ctx.translate(halfWidthPx, halfHeightPx);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${gridConfig.alpha || 0.15})`;
+        ctx.lineWidth = 1;
+
+        // Vertical lines
+        for (let x = firstX; x <= maxX; x += spacingWorld) {
+          const screenX = (x - cameraPos.x) * scale;
+          ctx.beginPath();
+          ctx.moveTo(screenX, -halfHeightPx - spacingPx);
+          ctx.lineTo(screenX, halfHeightPx + spacingPx);
+          ctx.stroke();
+        }
+        
+        // Horizontal lines
+        for (let y = firstY; y <= maxY; y += spacingWorld) {
+          const screenY = -(y - cameraPos.y) * scale;
+          ctx.beginPath();
+          ctx.moveTo(-halfWidthPx - spacingPx, screenY);
+          ctx.lineTo(halfWidthPx + spacingPx, screenY);
+          ctx.stroke();
+        }
+
+        // Origin crosshair (brighter)
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.lineWidth = 2;
+        const originX = (0 - cameraPos.x) * scale;
+        const originY = -(0 - cameraPos.y) * scale;
+        
+        ctx.beginPath();
+        ctx.moveTo(originX - 12, originY);
+        ctx.lineTo(originX + 12, originY);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(originX, originY - 12);
+        ctx.lineTo(originX, originY + 12);
+        ctx.stroke();
+
+        ctx.restore();
       }
 
       function updateHUD(state, assistResult, input, summary, config, asteroids, collisions) {

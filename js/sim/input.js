@@ -26,7 +26,7 @@
     const keyState = new Set();
     let pointerVector = { x: 0, y: 0 };
     let pointerActive = false;
-    const state = {
+    this.state = {
       coupled: true,
       autopilot: true
     };
