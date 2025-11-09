@@ -27,8 +27,8 @@
     let pointerVector = { x: 0, y: 0 };
     let pointerActive = false;
     const state = {
-      coupled: false,
-      autopilot: false
+      coupled: true,
+      autopilot: true
     };
 
     function handleKeyDown(event) {
