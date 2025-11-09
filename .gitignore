@@ -1,0 +1,11 @@
+node_modules/
+.cache/
+dist/
+*.log
+*.tmp
+*.bak
+coverage/
+*.DS_Store
+Thumbs.db
+npm-debug.log*
+test/*.out
