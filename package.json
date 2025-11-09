@@ -1,0 +1,12 @@
+{
+  "name": "u2-shipeditor",
+  "version": "0.6.0-audit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/smoke.js"
+  },
+  "devDependencies": {
+    "ajv": "^8.12.0"
+  }
+}
