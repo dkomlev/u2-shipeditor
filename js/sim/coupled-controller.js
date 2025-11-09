@@ -71,6 +71,12 @@
 
       const torque = solveYawCommand(turnInput, slipError, state.angularVelocity ?? 0, yawAccelCap, handling);
 
+      // SR telemetry (§8 ТЗ v0.6.3)
+      const vOverC = Math.min(speed / c, 0.999);
+      const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
+      const a_fwd_eff = forwardJerk.value / Math.pow(gamma, 3);
+      const a_lat_eff = combinedLatAccel / gamma;
+
       return {
         command: {
           thrustForward,
@@ -83,7 +89,12 @@
           profile: profileName || handling.profileName || "Balanced",
           limiter_active: speed > Math.min(vmaxRuntime, c) * limiterRatio,
           jerk_clamped_forward: forwardJerk.clamped,
-          jerk_clamped_lateral: slipJerk.clamped
+          jerk_clamped_lateral: slipJerk.clamped,
+          gamma: gamma,
+          v_over_c: vOverC,
+          sr_active: vOverC >= 0.5,
+          a_fwd_eff_mps2: a_fwd_eff,
+          a_lat_eff_mps2: a_lat_eff
         }
       };
     }
