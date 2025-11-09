@@ -419,7 +419,9 @@
             "turn_authority": { "type": "number" },
             "turn_assist": { "type": "number" },
             "traction_floor": { "type": "number" },
-            "traction_speed_ref": { "type": "number" }
+            "traction_speed_ref": { "type": "number" },
+            "strafe_to_slip_gain": { "type": "number" },
+            "nose_align_gain": { "type": "number" }
           }
         },
         "jerk": {

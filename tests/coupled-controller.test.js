@@ -34,7 +34,10 @@ function testTurnAllowsTorque() {
   );
 
   assert.ok(result.command.torque > 0.05, "controller should generate torque when turn input is applied");
-  assert.ok(Math.abs(result.telemetry.slip_target_deg) < 0.01, "default slip target should stay near zero without manual strafe");
+  assert.ok(
+    result.telemetry.slip_target_deg > 2,
+    "turn input in Drift profile should запросить положительный β* даже без стрейфа"
+  );
 }
 
 function testLimiterReducesForward() {
@@ -72,7 +75,7 @@ function testManualStrafePassThrough() {
     { dt_sec: 1 / 60, c_mps: 10000, vmax_runtime: 10000, inertia: 1 }
   );
   assert.ok(result.command.thrustRight > 0.9, "manual strafe input should pass through in Coupled mode");
-  assert.ok(result.telemetry.slip_target_deg > 5, "positive strafe should request positive slip");
+  assert.ok(result.telemetry.slip_target_deg > 2, "positive strafe should request positive slip");
 }
 
 function run() {

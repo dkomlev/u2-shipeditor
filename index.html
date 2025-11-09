@@ -39,6 +39,18 @@
           <span class="meta-label">Coupled ассист:&nbsp;<strong data-field="ship-preset">—</strong></span>
           <span class="chip chip--ghost" data-field="ship-preset-hint">—</span>
         </p>
+        <div class="assist-meta">
+          <span>Профиль:&nbsp;<strong data-field="assist-profile">—</strong></span>
+          <span>β лимит:&nbsp;<strong data-field="assist-slip-limit">—</strong></span>
+          <span>Traction:&nbsp;<strong data-field="assist-traction">—</strong></span>
+        </div>
+        <div class="assist-override">
+          <label for="assistOverrideSelect">Переключить пресет</label>
+          <select id="assistOverrideSelect">
+            <option value="">Из ShipConfig</option>
+          </select>
+          <small data-field="assist-override-status">Из ShipConfig</small>
+        </div>
         <div class="stats-grid">
           <div class="stat">
             <div class="stat-label">Масса</div>
@@ -121,6 +133,9 @@
           <li><span>Источник</span><span data-field="ship-source">—</span></li>
           <li><span>Версия</span><span data-field="ship-version">—</span></li>
           <li><span>Assist preset</span><span data-field="ship-preset">—</span></li>
+          <li><span>Профиль ассиста</span><span data-field="assist-profile">—</span></li>
+          <li><span>β лимит / traction</span><span><span data-field="assist-slip-limit">—</span> · <span data-field="assist-traction">—</span></span></li>
+          <li><span>Limiter ratio</span><span data-field="assist-speed-limiter">—</span></li>
           <li><span>Power (MW)</span><span data-field="ship-power">—</span></li>
           <li><span>Статус</span><span data-field="status-message">—</span></li>
           <li><span>Обновлено</span><span data-field="status-timestamp">—:—</span></li>

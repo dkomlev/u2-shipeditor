@@ -54,8 +54,34 @@
         forward_accel_mps2: entry.forward_accel_mps2 ?? null,
         lateral_accel_mps2: entry.lateral_accel_mps2 ?? null,
         thrust_to_weight: entry.thrust_to_weight ?? null,
-        power_MW: entry.power_MW ?? null
+        power_MW: entry.power_MW ?? null,
+        assist_profile: entry.assist_profile ?? null,
+        assist_slip_limit_deg: entry.assist_slip_limit_deg ?? null,
+        assist_traction_control: entry.assist_traction_control ?? null,
+        assist_speed_limiter_ratio: entry.assist_speed_limiter_ratio ?? null,
+        assist_turn_authority: entry.assist_turn_authority ?? null,
+        assist: entry.assist ?? null
       };
+    } else {
+      const mappings = [
+        "assist_profile",
+        "assist_slip_limit_deg",
+        "assist_traction_control",
+        "assist_speed_limiter_ratio",
+        "assist_turn_authority",
+        "forward_accel_mps2",
+        "lateral_accel_mps2",
+        "thrust_to_weight",
+        "power_MW"
+      ];
+      mappings.forEach((key) => {
+        if (entry[key] !== undefined && entry.summary[key] == null) {
+          entry.summary[key] = entry[key];
+        }
+      });
+      if (!entry.summary.assist && entry.assist) {
+        entry.summary.assist = entry.assist;
+      }
     }
     return entry;
   }

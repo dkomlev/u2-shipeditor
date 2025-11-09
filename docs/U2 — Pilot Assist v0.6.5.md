@@ -11,6 +11,7 @@
 
 - Режим **Coupled** выделен в отдельный модуль `CoupledController` (документ описывает API и зависимости). Это позволяет менять алгоритм независимо от остального Pilot Assist.
 - Алгоритм Coupled объединяет сильные стороны версий 0.6.4 (целевой слип β*, yaw lead, jerk‑лимиты) и 0.7.0 (handling characteristics). Добавлены параметризуемые профили управляемости.
+- Пересчитаны профили **Balanced / Grip / Drift**: возвращён прямой стрейф в Coupled (lat_authority ≥ 0.85), добавлены коэффициенты `turn_assist`, `strafe_to_slip_gain`, `nose_align_gain`, `traction_floor`, чтобы даже Grip не «залипал» при манёвре > 90°.
 - Расширены поля `ShipConfig.assist.handling`: поддерживаются bias/responsiveness/slip_target_max/traction_control, а также набор параметров стабилизации (stab_gain, slip_threshold_deg, cap_main_coupled и т.д.). Все значения имеют дефолты и верифицированные диапазоны.
 - Обновлён контракт ввода/вывода Pilot Assist. Ввод включает caps.* от ядра, вывод — телеметрию для HUD (режим, β, β* и текущий профиль). Coupled модуль принимает только нормализованные данные и возвращает команду в системе корабля.
 - Добавлены новые сценарии тестирования (PA‑12…PA‑15): steady‑slip drift, grip профиль, Brake→Coupled переход и регрессия по jerk‑лимиту.
@@ -160,13 +161,15 @@ alpha_cmd = stab_gain * angle_error(theta, dir_target)
 
 ## 5. Профили управляемости
 
-| Профиль | Назначение | Ключевые параметры |
-| --- | --- | --- |
-| **Drift** | Истребители, высокие β | slip_limit=18°, responsiveness=1.3, oversteer_bias=+0.12, traction_control=0.1 |
-| **Balanced** | Универсальные суда | slip_limit=10°, responsiveness=0.9, bias=0, traction_control=0.4 |
-| **Grip** | Гоночные/прецизионные | slip_limit=6°, responsiveness=0.6, bias=-0.15, traction_control=0.8 |
+| Профиль | Использование | Slip/traction | Стрейф и поворот |
+| --- | --- | --- | --- |
+| **Drift** | Лёгкие истребители, dogfight с большими β | `slip_limit=18°`, `responsiveness=1.35`, `oversteer_bias=+0.12`, `traction_control=0.12`, `traction_floor=0.35`, `speed_limiter_ratio=0.9` | `lat_authority=0.95`, `turn_authority=0.9`, `turn_assist=0.5`, `strafe_to_slip_gain=0.55`, `nose_align_gain=0.08` |
+| **Balanced** | Универсальные суда, транспорт/мультироль | `slip_limit=12°`, `responsiveness=0.9`, `bias=0`, `traction_control=0.45`, `traction_floor=0.3`, `speed_limiter_ratio=0.85` | `lat_authority=0.9`, `turn_authority=0.85`, `turn_assist=0.35`, `strafe_to_slip_gain=0.4`, `nose_align_gain=0.18` |
+| **Grip** | Гоночные, приземлённые VTOL, точные манёвры | `slip_limit=8°`, `responsiveness=0.75`, `bias=-0.15`, `traction_control=0.8`, `traction_floor=0.4`, `speed_limiter_ratio=0.8` | `lat_authority=0.9`, `turn_authority=0.95`, `turn_assist=0.25`, `strafe_to_slip_gain=0.35`, `nose_align_gain=0.32` |
 
-Профиль выбирается по `assist.handling_style`. Пользовательские значения могут переопределять таблицу (см. приложение в v0.7.0).
+Общее требование: **стрейф всегда проходит напрямую** (через `lat_authority`), а Coupled‑коррекция лишь добавляет ограниченный сигнал. Даже в Grip допустимы манёвры >90° относительно вектора скорости — ассист постепенно смещает сам вектор скорости, а не «разворачивает нос» в сторону движения пилота.
+
+Конкретный корабль может переопределять любое поле в `assist.handling`; редактор подсветит выход за диапазон, но не запретит.
 
 ---
 

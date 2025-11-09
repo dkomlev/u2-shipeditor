@@ -36,7 +36,13 @@
         slip_target_max: 18,
         traction_control: 0.15,
         cap_main_coupled: 0.6,
-        lat_authority: 0.95
+        lat_authority: 0.95,
+        turn_authority: 0.9,
+        turn_assist: 0.5,
+        traction_floor: 0.35,
+        traction_speed_ref: 520,
+        strafe_to_slip_gain: 0.55,
+        nose_align_gain: 0.08
       },
       jerk: { forward_mps3: 220, lateral_mps3: 180 }
     },
@@ -56,8 +62,14 @@
         responsiveness: 0.9,
         slip_target_max: 12,
         traction_control: 0.4,
-        cap_main_coupled: 0.7,
-        lat_authority: 0.85
+        cap_main_coupled: 0.78,
+        lat_authority: 0.9,
+        turn_authority: 0.85,
+        turn_assist: 0.35,
+        traction_floor: 0.3,
+        traction_speed_ref: 360,
+        strafe_to_slip_gain: 0.4,
+        nose_align_gain: 0.18
       },
       jerk: { forward_mps3: 160, lateral_mps3: 130 }
     },
@@ -77,8 +89,14 @@
         responsiveness: 0.7,
         slip_target_max: 8,
         traction_control: 0.75,
-        cap_main_coupled: 0.8,
-        lat_authority: 0.8
+        cap_main_coupled: 0.82,
+        lat_authority: 0.9,
+        turn_authority: 0.95,
+        turn_assist: 0.25,
+        traction_floor: 0.4,
+        traction_speed_ref: 280,
+        strafe_to_slip_gain: 0.35,
+        nose_align_gain: 0.32
       },
       jerk: { forward_mps3: 140, lateral_mps3: 120 }
     }
@@ -131,7 +149,14 @@
       sourceLabel: sourcePath?.startsWith("local:")
         ? "Импортированный JSON"
         : `Файл: ${sourcePath || "—"}`,
-      assist: assistProfile
+      assist: assistProfile,
+      assist_profile: assistProfile.handling_style,
+      assist_slip_limit_deg: assistProfile.handling?.slip_limit_deg ?? null,
+      assist_slip_target_max_deg: assistProfile.handling?.slip_target_max ?? null,
+      assist_traction_control: assistProfile.handling?.traction_control ?? null,
+      assist_cap_main_coupled: assistProfile.handling?.cap_main_coupled ?? null,
+      assist_speed_limiter_ratio: assistProfile.speed_limiter_ratio ?? null,
+      assist_turn_authority: assistProfile.handling?.turn_authority ?? null
     };
   }
 
@@ -174,7 +199,14 @@
       sourceLabel: sourcePath?.startsWith("local:")
         ? "Импортированный JSON (v0.5.3)"
         : `Legacy: ${sourcePath || "—"}`,
-      assist: assistProfile
+      assist: assistProfile,
+      assist_profile: assistProfile.handling_style,
+      assist_slip_limit_deg: assistProfile.handling?.slip_limit_deg ?? null,
+      assist_slip_target_max_deg: assistProfile.handling?.slip_target_max ?? null,
+      assist_traction_control: assistProfile.handling?.traction_control ?? null,
+      assist_cap_main_coupled: assistProfile.handling?.cap_main_coupled ?? null,
+      assist_speed_limiter_ratio: assistProfile.speed_limiter_ratio ?? null,
+      assist_turn_authority: assistProfile.handling?.turn_authority ?? null
     };
   }
 
@@ -271,7 +303,13 @@
       ),
       traction_control: clampNumber(assist.handling?.traction_control ?? base.handling.traction_control, 0, 1),
       cap_main_coupled: clampNumber(assist.handling?.cap_main_coupled ?? base.handling.cap_main_coupled, 0.2, 1),
-      lat_authority: clampNumber(assist.handling?.lat_authority ?? base.handling.lat_authority, 0.2, 1)
+      lat_authority: clampNumber(assist.handling?.lat_authority ?? base.handling.lat_authority, 0.2, 1),
+      turn_authority: clampNumber(assist.handling?.turn_authority ?? base.handling.turn_authority ?? 0.7, 0, 2),
+      turn_assist: clampNumber(assist.handling?.turn_assist ?? base.handling.turn_assist ?? 0.3, 0, 1),
+      traction_floor: clampNumber(assist.handling?.traction_floor ?? base.handling.traction_floor ?? 0.25, 0, 1),
+      traction_speed_ref: clampNumber(assist.handling?.traction_speed_ref ?? base.handling.traction_speed_ref ?? 320, 50, 1200),
+      strafe_to_slip_gain: clampNumber(assist.handling?.strafe_to_slip_gain ?? base.handling.strafe_to_slip_gain ?? 0.3, 0, 2),
+      nose_align_gain: clampNumber(assist.handling?.nose_align_gain ?? base.handling.nose_align_gain ?? 0.1, 0, 1)
     };
     const jerkDefaults = base.jerk || { forward_mps3: 160, lateral_mps3: 120 };
     const jerk = {

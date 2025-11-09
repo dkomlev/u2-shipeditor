@@ -261,6 +261,7 @@
           <div><strong>Profile:</strong> ${profileLabel}</div>
           <div><strong>Boost:</strong> ${normalizedInput.boost ? "ON" : "OFF"}</div>
           <div><strong>Slip:</strong> ${slipCurrent}° / ${slipTarget}°</div>
+          <div><strong>Jerk:</strong> F ${telemetry.jerk_clamped_forward ? "ON" : "off"} · L ${telemetry.jerk_clamped_lateral ? "ON" : "off"}</div>
           <div><strong>Speed:</strong> ${speed.toFixed(1)} м/с</div>
           <div><strong>Forward:</strong> ${forwardSpeed.toFixed(1)} м/с</div>
           <div><strong>Strafe:</strong> ${rightSpeed.toFixed(1)} м/с</div>

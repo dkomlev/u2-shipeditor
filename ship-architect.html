@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>U2 Ship Architect v0.6</title>
+  <title>U2 Ship Architect v0.6.5</title>
   <link rel="stylesheet" href="./css/app.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="hero card">
       <div>
-        <div class="section-title">U2 Ship Architect v0.6</div>
+        <div class="section-title">U2 Ship Architect v0.6.5</div>
         <div class="hero__meta">
           <label class="field">
             <span>Название корабля</span>
@@ -49,7 +49,7 @@
         <span><b>Auto</b> — обновляет размер, тягу, радиус и массу по габаритам.</span>
         <span><b>Recommend</b> — показывает подсказки для выравнивания с архетипом.</span>
         <span><b>Архетип: заполнить</b> — перезаписывает все поля номиналами.</span>
-        <span><b>Сброс</b> — возвращает конфиг к чистому шаблону v0.6.</span>
+        <span><b>Сброс</b> — возвращает конфиг к чистому шаблону v0.6.5.</span>
       </div>
     </header>
 
@@ -327,6 +327,12 @@
             <label class="field">
               <span>slip_correction_gain</span>
               <input type="number" step="0.01" data-bind="assist.handling.slip_correction_gain" />
+            </label>
+          </div>
+          <div class="field-grid two">
+            <label class="field">
+              <span>strafe_to_slip_gain</span>
+              <input type="number" step="0.05" data-bind="assist.handling.strafe_to_slip_gain" />
             </label>
           </div>
           <div class="field-grid three">

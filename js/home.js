@@ -2,6 +2,7 @@
 
 (function () {
   const STORAGE_KEY = "u2.selectedShip";
+  const PRESETS = ["Balanced", "Sport", "Rally", "Muscle", "F1", "Industrial", "Truck", "Warship", "Liner", "Recon"];
   const SHIP_ADAPTER =
     (typeof window !== "undefined" && window.U2ShipAdapter) ||
     (typeof globalThis !== "undefined" && globalThis.U2ShipAdapter);
@@ -18,7 +19,8 @@
   const state = {
     current: null,
     toastTimer: null,
-    manifest: []
+    manifest: [],
+    assistOverride: null
   };
 
   const cache = new Map();
@@ -58,6 +60,12 @@
     dom.shipPickerModal = document.getElementById("shipPickerModal");
     dom.pickerList = document.getElementById("pickerList");
     dom.pickerImport = document.getElementById("pickerImport");
+    dom.assistOverrideSelect = document.getElementById("assistOverrideSelect");
+    dom.assistOverrideStatus = document.querySelector('[data-field="assist-override-status"]');
+    if (dom.assistOverrideSelect && dom.assistOverrideSelect.options.length <= 1) {
+      PRESETS.forEach((preset) => dom.assistOverrideSelect.add(new Option(preset, preset)));
+    }
+    setAssistOverride(state.assistOverride);
   }
 
   function bindEvents() {
@@ -65,6 +73,10 @@
     dom.launchBtn?.addEventListener("click", onLaunchFlightTest);
     dom.openArchitectBtn?.addEventListener("click", () => (window.location.href = "ship-architect.html"));
     dom.openAppConfigBtn?.addEventListener("click", () => (window.location.href = "app-config.html"));
+    dom.assistOverrideSelect?.addEventListener("change", (event) => {
+      const value = event.target.value || null;
+      setAssistOverride(value);
+    });
 
     dom.shipImage?.addEventListener("error", () => {
       dom.shipImage?.setAttribute("hidden", "hidden");
@@ -97,6 +109,18 @@
     fieldCache.get(name).forEach((node) => {
       node.textContent = value;
     });
+  }
+
+  function setAssistOverride(value) {
+    state.assistOverride = value || null;
+    if (dom.assistOverrideSelect && dom.assistOverrideSelect.value !== (value || "")) {
+      dom.assistOverrideSelect.value = value || "";
+    }
+    const hint = value ? `Перекрыт на ${value}` : "Из ShipConfig";
+    writeField("assist-override-status", hint);
+    if (state.current) {
+      persistSelection(state.current);
+    }
   }
 
   async function loadManifest() {
@@ -140,6 +164,7 @@
           },
           false
         );
+        setAssistOverride(stored.assistOverride ?? null);
         showStatus("Загружен корабль из localStorage", false);
         return;
       }
@@ -147,6 +172,7 @@
       if (stored.path) {
         const result = await fetchShip(stored.path);
         applySelection(result, false);
+        setAssistOverride(stored.assistOverride ?? null);
         showStatus("Восстановлен последний выбранный корабль", false);
         return;
       }
@@ -218,6 +244,7 @@
       version: payload.summary.version,
       sourceKind: payload.sourceKind,
       snapshot,
+      assistOverride: state.assistOverride,
       inlineShip: payload.sourceKind === "inline" ? stripSprite(payload.raw) : null,
       storedAt: new Date().toISOString()
     };
@@ -264,6 +291,10 @@
     writeField("ship-thrust-weight", formatRatio(summary.thrust_to_weight, "g"));
     writeField("ship-maneuver", summary.performanceHint || "—");
     writeField("ship-power", formatNumber(summary.power_MW, "МВт"));
+    writeField("assist-profile", summary.assist_profile || summary.assist?.handling_style || summary.preset || "—");
+    writeField("assist-slip-limit", formatNumber(summary.assist_slip_limit_deg, "°"));
+    writeField("assist-traction", formatFraction(summary.assist_traction_control));
+    writeField("assist-speed-limiter", formatPercent(summary.assist_speed_limiter_ratio));
 
     updatePreview(summary.sprite);
     updateStatusTimestamp();
@@ -354,7 +385,7 @@
         </div>
         <div class="picker-card__title">${summary?.name ?? entry.path.split("/").pop()}</div>
         <div class="picker-card__meta">
-          ${summary?.size_type ?? "—"} · ${summary?.preset ?? "—"}
+          ${summary?.size_type ?? "—"} · ${summary?.assist_profile ?? summary?.preset ?? "—"}
         </div>
         ${stats}
         ${tags}
@@ -417,7 +448,11 @@
       forward_accel_mps2: summary.forward_accel_mps2,
       lateral_accel_mps2: summary.lateral_accel_mps2,
       angular_dps: summary.angular_dps,
-      sprite: summary.sprite
+      sprite: summary.sprite,
+      assist_profile: summary.assist_profile,
+      assist_slip_limit_deg: summary.assist_slip_limit_deg,
+      assist_traction_control: summary.assist_traction_control,
+      assist_speed_limiter_ratio: summary.assist_speed_limiter_ratio
     };
   }
 
@@ -446,6 +481,8 @@
       sourceKind === "inline"
         ? { inline_ship: raw }
         : { ship_config_path: sourcePath };
+    const autopPreset = state.assistOverride || summary.preset;
+    const autopSource = state.assistOverride ? "launcher" : summary.presetSource || "config";
 
     return {
       version: "0.5.3",
@@ -479,7 +516,23 @@
       autopilot: {
         coupled: true,
         dampeners: true,
-        preset: summary.preset
+        preset: autopPreset,
+        source: autopSource,
+        profile: summary.assist_profile || summary.preset,
+        slip_limit_deg: summary.assist_slip_limit_deg ?? null,
+        traction_control: summary.assist_traction_control ?? null,
+        speed_limiter_ratio: summary.assist_speed_limiter_ratio ?? null
+      },
+      pilot_assist: {
+        preset: autopPreset,
+        override: state.assistOverride || null,
+        summary: {
+          profile: summary.assist_profile || summary.preset,
+          slip_limit_deg: summary.assist_slip_limit_deg ?? null,
+          traction_control: summary.assist_traction_control ?? null,
+          speed_limiter_ratio: summary.assist_speed_limiter_ratio ?? null,
+          turn_authority: summary.assist_turn_authority ?? null
+        }
       },
       selected_ship: {
         id: summary.id,
@@ -561,6 +614,20 @@
     return `${value.toFixed(0)}°`;
   }
 
+  function formatFraction(value, digits = 2) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    return value.toFixed(digits);
+  }
+
+  function formatPercent(value) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    return `${Math.round(value * 100)}%`;
+  }
+
   function getEntrySummary(entry) {
     if (!entry) {
       return null;
@@ -574,13 +641,20 @@
       type: entry.type,
       size_type: entry.size && entry.type ? `${entry.size} ${entry.type}` : entry.size || entry.type || "",
       preset: entry.preset,
+      presetSource: entry.presetSource,
       version: entry.version,
       sprite: entry.preview || null,
       forward_accel_mps2: entry.forward_accel_mps2 ?? null,
       lateral_accel_mps2: entry.lateral_accel_mps2 ?? null,
       thrust_to_weight: entry.thrust_to_weight ?? null,
       power_MW: entry.power_MW ?? null,
-      tags: entry.tags || []
+      tags: entry.tags || [],
+      assist_profile: entry.assist_profile ?? null,
+      assist_slip_limit_deg: entry.assist_slip_limit_deg ?? null,
+      assist_traction_control: entry.assist_traction_control ?? null,
+      assist_speed_limiter_ratio: entry.assist_speed_limiter_ratio ?? null,
+      assist_turn_authority: entry.assist_turn_authority ?? null,
+      assist: entry.assist ?? null
     };
   }
 
@@ -596,11 +670,18 @@
           ? summary.thrust_to_weight.toFixed(1)
           : summary.thrust_to_weight.toFixed(2)
         : "—";
+    const assistProfile = summary.assist_profile || summary.preset || "—";
+    const slipLimit = typeof summary.assist_slip_limit_deg === "number" ? `${summary.assist_slip_limit_deg.toFixed(0)}°` : "—";
+    const traction =
+      typeof summary.assist_traction_control === "number" ? summary.assist_traction_control.toFixed(2) : "—";
     return `
       <div class="picker-card__stats">
         <span title="Forward accel">↗ ${forward}</span>
         <span title="Lateral accel">⇆ ${lateral}</span>
         <span title="Thrust to weight">T/W ${ratio}</span>
+      </div>
+      <div class="picker-card__assist" title="Сводка Coupled ассиста">
+        Assist: ${assistProfile} · β≤${slipLimit} · TC ${traction}
       </div>
     `;
   }

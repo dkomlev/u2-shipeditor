@@ -159,7 +159,9 @@
       slip_deg: beta,
       slip_target_deg: 0,
       profile: assist?.handling_style || "Balanced",
-      limiter_active: false
+      limiter_active: false,
+      jerk_clamped_forward: false,
+      jerk_clamped_lateral: false
     };
   }
 
