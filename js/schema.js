@@ -43,9 +43,13 @@ const cloneAssistDefaults = () => JSON.parse(JSON.stringify(DEFAULT_ASSIST));
 export function buildEmptyConfig({
   id = (crypto?.randomUUID?.() || String(Date.now())),
   name = "New Ship",
-  version = "0.6.0",
+  version = "0.6.3",
   author = ""
 } = {}) {
+  const mass_t = 60;
+  const forward_mps2 = 70;
+  const lateral_mps2 = 50;
+  
   return {
     meta: { id, name, version, author },
     classification: { size: "small", type: "fighter", size_type: "small fighter", stealth: "standard", variant: "" },
@@ -55,24 +59,45 @@ export function buildEmptyConfig({
       height_m: 5,
       hull_radius_m: Number((Math.hypot(20, 14) / 2).toFixed(2))
     },
-    mass: { dry_t: 60 },
+    mass: { dry_t: mass_t },
     inertia_opt: { Ixx: null, Iyy: null, Izz: null },
     signatures: { IR: 3, EM: 3, CS: 3 },
     performance: {
-      scm_mps: 200, vmax_mps: 1100, accel_fwd_mps2: 60,
-      strafe_mps2: { x: 60, y: 60, z: 60 },
+      accel_profile: {
+        forward_mps2: forward_mps2,
+        backward_mps2: 30,
+        lateral_mps2: lateral_mps2,
+        vertical_mps2: 40
+      },
       angular_dps: { pitch: 80, yaw: 70, roll: 110 },
       angular_accel_opt: { pitch: null, yaw: null, roll: null }
     },
-    propulsion: { main_thrust_MN: (60*60)/1e6, rcs_budget_MN: 1.0 },
+    propulsion: {
+      main_drive: {
+        max_thrust_kN: mass_t * forward_mps2,
+        sustained_thrust_kN: mass_t * forward_mps2 * 0.75,
+        max_power_MW: 25
+      },
+      rcs: {
+        forward_kN: mass_t * forward_mps2 * 0.3,
+        backward_kN: mass_t * 30,
+        lateral_kN: mass_t * lateral_mps2,
+        vertical_kN: mass_t * 40,
+        pitch_kNm: 360,
+        yaw_kNm: 320,
+        roll_kNm: 550
+      }
+    },
     power_opt: { reactor_MW: null, cooling_MW: null },
     payload: { cargo_scu: 0, crew: "1" },
     hardpoints_opt: { fixed: [], gimbals: [], turrets: [], missiles: [] },
     weapons: { summary: "" },
     assist: cloneAssistDefaults(),
+    tags: ["small", "fighter"],
     media: {
       sprite: { name: "", dataUrl: "", path: "", width: null, height: null }
     },
-    notes_opt: ""
+    notes_opt: "",
+    legacy_v053: {}
   };
 }
