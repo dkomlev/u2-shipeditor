@@ -91,21 +91,34 @@
         telemetry = coupledResult.telemetry;
         prevAngularAccel = 0;  // Reset in Coupled mode
       } else {
-        // Decoupled: limit angular velocity to ship specifications
+        // Decoupled: limit torque by available thrust budget and angular velocity limits
+        const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
+        const thrustBudget = state.thrustBudget || {};
+        const yawTorqueNm = Math.max(thrustBudget.yaw_kNm ?? 0, 0) * 1000;
+        const moment = Math.max(env.inertia ?? 1, 0.1) * mass;
+        const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0;
+
+        // Limit angular velocity to ship specifications
         const angularDps = summary.performance?.angular_dps;
-        const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI; // Default 180 dps if not specified
+        const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
         const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
-        
+
+        // Calculate desired angular acceleration from input
+        let desiredAngularAccel = command.torque; // torque is already normalized -1..1
+
         // If we're at or above max angular velocity, prevent further acceleration in that direction
-        if (currentAngularVel >= maxAngularVelRps * 0.95) { // 95% threshold to prevent oscillation
+        if (currentAngularVel >= maxAngularVelRps * 0.95) {
           const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
-          const torqueDirection = command.torque >= 0 ? 1 : -1;
-          // Only allow torque that opposes current rotation or is zero/small
-          if (torqueDirection === velDirection && Math.abs(command.torque) > 0.1) {
-            command.torque = 0;
+          const accelDirection = desiredAngularAccel >= 0 ? 1 : -1;
+          // Only allow acceleration that opposes current rotation
+          if (accelDirection === velDirection && Math.abs(desiredAngularAccel) > 0.1) {
+            desiredAngularAccel = 0;
           }
         }
-        
+
+        // Limit by available thrust budget
+        command.torque = maxAngularAccel > 0 ? clamp(desiredAngularAccel, -maxAngularAccel, maxAngularAccel) / maxAngularAccel : 0;
+
         // Decoupled: apply angular jerk limiting for smooth rotation ramp
         const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 0.8;
         const targetAngularAccel = command.torque;  // Normalized -1..1
@@ -141,7 +154,16 @@
       : (env.brake_g ?? 5);
     
     const stopTime = Math.max(env.brake_time ?? 0.25, 0.05);
-    const rotStop = Math.max(env.brake_rot_time ?? 0.15, 0.03);
+    
+    // Calculate rotational stop time based on ship's inertia and available torque
+    const inertia = Math.max(env.inertia ?? 1, 0.1);
+    const yawTorqueNm = Math.max(state.thrustBudget.yaw_kNm ?? 0, 0) * 1000;
+    const moment = inertia * mass;
+    const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0.1;
+    const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
+    // Stop time should be enough to decelerate from current velocity with available torque
+    const calculatedRotStop = currentAngularVel > 0 ? currentAngularVel / maxAngularAccel : 0.15;
+    const rotStop = Math.max(Math.min(calculatedRotStop, 2.0), 0.1); // Clamp between 0.1 and 2.0 seconds
     
     const vel = state.velocity;
     const speed = Math.hypot(vel.x, vel.y);
