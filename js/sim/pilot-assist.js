@@ -91,6 +91,21 @@
         telemetry = coupledResult.telemetry;
         prevAngularAccel = 0;  // Reset in Coupled mode
       } else {
+        // Decoupled: limit angular velocity to ship specifications
+        const angularDps = summary.performance?.angular_dps;
+        const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI; // Default 180 dps if not specified
+        const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
+        
+        // If we're at or above max angular velocity, prevent further acceleration in that direction
+        if (currentAngularVel >= maxAngularVelRps * 0.95) { // 95% threshold to prevent oscillation
+          const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
+          const torqueDirection = command.torque >= 0 ? 1 : -1;
+          // Only allow torque that opposes current rotation or is zero/small
+          if (torqueDirection === velDirection && Math.abs(command.torque) > 0.1) {
+            command.torque = 0;
+          }
+        }
+        
         // Decoupled: apply angular jerk limiting for smooth rotation ramp
         const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 0.8;
         const targetAngularAccel = command.torque;  // Normalized -1..1
