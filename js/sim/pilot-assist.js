@@ -114,7 +114,7 @@
         const effectiveMaxAngularAccel = maxAngularAccel * maxAccelMultiplier;
 
         // Calculate desired angular acceleration from input
-        let desiredAngularAccel = command.torque; // torque is already normalized -1..1
+        let desiredAngularAccel = command.torque * effectiveMaxAngularAccel; // Convert from normalized -1..1 to actual acceleration
 
         // If we're at or above max angular velocity, prevent further acceleration in that direction
         if (currentAngularVel >= maxAngularVelRps * 0.95) {
@@ -127,7 +127,8 @@
         }
 
         // Limit by available thrust budget with size-based multiplier
-        command.torque = effectiveMaxAngularAccel > 0 ? clamp(desiredAngularAccel, -effectiveMaxAngularAccel, effectiveMaxAngularAccel) / effectiveMaxAngularAccel : 0;
+        desiredAngularAccel = clamp(desiredAngularAccel, -effectiveMaxAngularAccel, effectiveMaxAngularAccel);
+        command.torque = effectiveMaxAngularAccel > 0 ? desiredAngularAccel / effectiveMaxAngularAccel : 0; // Convert back to normalized
 
         // Decoupled: apply angular jerk limiting for smooth rotation ramp
         const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 0.8;
