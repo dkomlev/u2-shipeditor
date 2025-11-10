@@ -197,7 +197,7 @@ export const NOMINALS = {
     geometry:{length_m:245, width_m:116, height_m:40}, mass:{dry_t:8000},
     signatures:{IR:4,EM:4,CS:5},
     performance:{scm_mps:110, vmax_mps:800, accel_fwd_mps2:6,
-      strafe_mps2:{x:6,y:6,z:10}, angular_dps:{pitch:0.2,yaw:0.2,roll:0.3}},
+      strafe_mps2:{x:6,y:6,z:10}, angular_dps:{pitch:0,yaw:0,roll:0}},
     payload:{cargo_scu:1200, crew:"30–80"}, weapons:{summary:"6–10 turrets, S10 gun"}
   },
   "capital destroyer": {
