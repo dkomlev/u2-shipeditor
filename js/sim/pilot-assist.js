@@ -103,18 +103,8 @@
         const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
         const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
 
-        // For capital ships, add additional angular acceleration limits (realistic physics)
-        const shipSize = summary.classification?.size;
-        let maxAccelMultiplier = 1.0;
-        if (shipSize === 'capital') {
-          maxAccelMultiplier = 0.1; // Capital ships accelerate rotation much slower
-        } else if (shipSize === 'heavy') {
-          maxAccelMultiplier = 0.3; // Heavy ships also slower
-        }
-        const effectiveMaxAngularAccel = maxAngularAccel * maxAccelMultiplier;
-
         // Calculate desired angular acceleration from input
-        let desiredAngularAccel = command.torque * effectiveMaxAngularAccel; // Convert from normalized -1..1 to actual acceleration
+        let desiredAngularAccel = command.torque; // torque is already normalized -1..1
 
         // If we're at or above max angular velocity, prevent further acceleration in that direction
         if (currentAngularVel >= maxAngularVelRps * 0.95) {
@@ -126,9 +116,8 @@
           }
         }
 
-        // Limit by available thrust budget with size-based multiplier
-        desiredAngularAccel = clamp(desiredAngularAccel, -effectiveMaxAngularAccel, effectiveMaxAngularAccel);
-        command.torque = effectiveMaxAngularAccel > 0 ? desiredAngularAccel / effectiveMaxAngularAccel : 0; // Convert back to normalized
+        // Limit by available thrust budget
+        command.torque = maxAngularAccel > 0 ? clamp(desiredAngularAccel, -maxAngularAccel, maxAngularAccel) / maxAngularAccel : 0;
 
         // Decoupled: apply angular jerk limiting for smooth rotation ramp
         const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 0.8;
@@ -172,19 +161,9 @@
     const moment = inertia * mass;
     const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0.1;
     const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
-    
-    // For capital ships, braking takes much longer (realistic physics)
-    const shipSize = summary?.classification?.size;
-    let brakeTimeMultiplier = 1.0;
-    if (shipSize === 'capital') {
-      brakeTimeMultiplier = 5.0; // Capital ships take 5x longer to stop rotating
-    } else if (shipSize === 'heavy') {
-      brakeTimeMultiplier = 2.0; // Heavy ships take 2x longer
-    }
-    
     // Stop time should be enough to decelerate from current velocity with available torque
-    const calculatedRotStop = currentAngularVel > 0 ? (currentAngularVel / maxAngularAccel) * brakeTimeMultiplier : 0.15;
-    const rotStop = Math.max(Math.min(calculatedRotStop, 10.0), 0.5); // Clamp between 0.5 and 10.0 seconds for capital ships
+    const calculatedRotStop = currentAngularVel > 0 ? currentAngularVel / maxAngularAccel : 0.15;
+    const rotStop = Math.max(Math.min(calculatedRotStop, 2.0), 0.1); // Clamp between 0.1 and 2.0 seconds
     
     const vel = state.velocity;
     const speed = Math.hypot(vel.x, vel.y);

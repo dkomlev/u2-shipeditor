@@ -41,9 +41,9 @@
       "z": 25
     },
     "angular_dps": {
-      "pitch": 5,
-      "yaw": 4,
-      "roll": 5
+      "pitch": 0.5,
+      "yaw": 0.4,
+      "roll": 0.6
     },
     "angular_accel_opt": {
       "pitch": null,
