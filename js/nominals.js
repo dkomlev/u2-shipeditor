@@ -106,7 +106,7 @@ export const NOMINALS = {
     geometry:{length_m:110, width_m:50, height_m:20}, mass:{dry_t:450},
     signatures:{IR:4,EM:4,CS:4},
     performance:{scm_mps:170, vmax_mps:900, accel_fwd_mps2:25,
-      strafe_mps2:{x:25,y:25,z:25}, angular_dps:{pitch:25,yaw:16,roll:25}},
+      strafe_mps2:{x:25,y:25,z:25}, angular_dps:{pitch:5,yaw:4,roll:5}},
     payload:{cargo_scu:500, crew:"4–6"}, weapons:{summary:"4–6 turrets"}
   },
   "capital freighter": {
@@ -197,7 +197,7 @@ export const NOMINALS = {
     geometry:{length_m:245, width_m:116, height_m:40}, mass:{dry_t:8000},
     signatures:{IR:4,EM:4,CS:5},
     performance:{scm_mps:110, vmax_mps:800, accel_fwd_mps2:6,
-      strafe_mps2:{x:6,y:6,z:10}, angular_dps:{pitch:12,yaw:12,roll:18}},
+      strafe_mps2:{x:6,y:6,z:10}, angular_dps:{pitch:2,yaw:2,roll:3}},
     payload:{cargo_scu:1200, crew:"30–80"}, weapons:{summary:"6–10 turrets, S10 gun"}
   },
   "capital destroyer": {

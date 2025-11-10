@@ -39,9 +39,9 @@
       "vertical_mps2": 3
     },
     "angular_dps": {
-      "pitch": 12,
-      "yaw": 12,
-      "roll": 18
+      "pitch": 2,
+      "yaw": 2,
+      "roll": 3
     },
     "angular_accel_opt": {
       "pitch": null,
