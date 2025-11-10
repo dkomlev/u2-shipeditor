@@ -87,7 +87,11 @@
     const torqueNm = torqueInput * (state.thrustBudget.yaw_kNm ?? 0) * KNM_TO_NM;
     const moment = Math.max(env.inertia ?? 1, 0.1) * mass_kg;
     const angularAcceleration = torqueNm / moment;
-    const newAngularVelocity = state.angularVelocity + angularAcceleration * dt;
+    let newAngularVelocity = state.angularVelocity + angularAcceleration * dt;
+    
+    // Safety clamp: prevent excessive angular velocities (emergency limit)
+    const maxSafeAngularVel = 4 * Math.PI; // 2 rotations per second max
+    newAngularVelocity = Math.max(-maxSafeAngularVel, Math.min(maxSafeAngularVel, newAngularVelocity));
 
     const nextPosition = {
       x: state.position.x + vx * dt,
