@@ -1,23 +1,23 @@
 {
   "meta": {
-    "id": "u2_medium_miner_001",
-    "name": "Medium Miner Mk.I",
+    "id": "u2_crusader_c2_hercules_starlifter",
+    "name": "Crusader C2 Hercules Starlifter",
     "version": "0.6.0"
   },
   "classification": {
-    "size": "medium",
-    "type": "miner",
-    "size_type": "medium miner",
+    "size": "heavy",
+    "type": "freighter",
+    "size_type": "heavy freighter",
     "stealth": "standard",
     "variant": null
   },
   "geometry": {
-    "length_m": 38,
-    "width_m": 30,
-    "height_m": 12
+    "length_m": 60,
+    "width_m": 40,
+    "height_m": 15
   },
   "mass": {
-    "dry_t": 160
+    "dry_t": 400
   },
   "signatures": {
     "IR": 3,
@@ -25,26 +25,26 @@
     "CS": 3
   },
   "performance": {
-    "scm_mps": 160,
-    "vmax_mps": 900,
-    "accel_fwd_mps2": 35,
+    "scm_mps": 120,
+    "vmax_mps": 700,
+    "accel_fwd_mps2": 20,
     "strafe_mps2": {
-      "x": 40,
-      "y": 40,
-      "z": 40
+      "x": 25,
+      "y": 25,
+      "z": 25
     },
     "angular_dps": {
-      "pitch": 45,
-      "yaw": 40,
-      "roll": 75
+      "pitch": 4.5,
+      "yaw": 4,
+      "roll": 7.5
     }
   },
   "propulsion": {
-    "main_thrust_MN": 5.6,
-    "rcs_budget_MN": 1.8
+    "main_thrust_MN": 80,
+    "rcs_budget_MN": 2.5
   },
   "payload": {
-    "cargo_scu": 96,
+    "cargo_scu": 150,
     "crew": "2-3"
   },
   "weapons": {

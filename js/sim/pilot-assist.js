@@ -20,7 +20,8 @@
           handling: summary.assist?.handling,
           jerk: summary.assist?.jerk,
           speedLimiterRatio: summary.assist?.speed_limiter_ratio,
-          profileName: summary.assist?.handling_style
+          profileName: summary.assist?.handling_style,
+          angular_dps: summary.performance?.angular_dps || summary.angular_dps
         })
       : null;
 
@@ -40,9 +41,9 @@
       }
 
       if (input.brake) {
-        const brakeResult = applyBrake(state, env, summary.assist?.brake, input.boost, boostCooldownTimer);
+        const brakeResult = applyBrake(state, env, summary || {}, input.boost, boostCooldownTimer);
         // Start cooldown if boost was used
-        if (input.boost && boostCooldownTimer <= 0 && summary.assist?.brake) {
+        if (input.boost && boostCooldownTimer <= 0 && summary?.assist?.brake) {
           boostCooldownTimer = summary.assist.brake.boost_cooldown_s ?? 15;
         }
         return {
@@ -99,15 +100,23 @@
         const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0;
 
         // Limit angular velocity to ship specifications
-        const angularDps = summary.performance?.angular_dps;
+        const angularDps = summary.performance?.angular_dps || summary.angular_dps;
         const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
         const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
 
         // Calculate desired angular acceleration from input
         let desiredAngularAccel = command.torque; // torque is already normalized -1..1
 
-        // If we're at or above max angular velocity, prevent further acceleration in that direction
-        if (currentAngularVel >= maxAngularVelRps * 0.95) {
+        // Limit angular acceleration by angular velocity limits (degrees per second)
+        const maxAngularAccelFromDps = maxAngularVelRps / 0.2; // time_constant = 0.2s for smooth limiting
+        desiredAngularAccel = clamp(desiredAngularAccel, -maxAngularAccelFromDps, maxAngularAccelFromDps);
+
+        // Removed damping to rely on ship TTX limits only
+
+        // If max angular velocity is 0, completely disable rotation
+        if (maxAngularVelRps === 0) {
+          desiredAngularAccel = 0;
+        } else if (currentAngularVel >= maxAngularVelRps * 0.95) {
           const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
           const accelDirection = desiredAngularAccel >= 0 ? 1 : -1;
           // Only allow acceleration that opposes current rotation
@@ -120,7 +129,7 @@
         command.torque = maxAngularAccel > 0 ? clamp(desiredAngularAccel, -maxAngularAccel, maxAngularAccel) / maxAngularAccel : 0;
 
         // Decoupled: apply angular jerk limiting for smooth rotation ramp
-        const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 0.8;
+        const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 2.0;
         const targetAngularAccel = command.torque;  // Normalized -1..1
         const jerkResult = applyAngularJerk(prevAngularAccel, targetAngularAccel, angularJerkLimit, dt);
         prevAngularAccel = jerkResult.value;
@@ -143,11 +152,12 @@
     return { update };
   }
 
-  function applyBrake(state, env, assistBrake, boostRequested, cooldownRemaining) {
+  function applyBrake(state, env, summary = {}, boostRequested, cooldownRemaining) {
     const g0 = 9.80665;
     const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
     
     // Use assist.brake settings if available, otherwise fallback to env
+    const assistBrake = summary?.assist?.brake;
     const canBoost = boostRequested && cooldownRemaining <= 0;
     const gTarget = assistBrake 
       ? (canBoost ? assistBrake.g_boost : assistBrake.g_sustain)
@@ -163,7 +173,7 @@
     const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
     // Stop time should be enough to decelerate from current velocity with available torque
     const calculatedRotStop = currentAngularVel > 0 ? currentAngularVel / maxAngularAccel : 0.15;
-    const rotStop = Math.max(Math.min(calculatedRotStop, 2.0), 0.1); // Clamp between 0.1 and 2.0 seconds
+    const rotStop = Math.max(Math.min(calculatedRotStop * 2, 4.0), 0.2); // Clamp between 0.2 and 4.0 seconds
     
     const vel = state.velocity;
     const speed = Math.hypot(vel.x, vel.y);
@@ -207,9 +217,21 @@
       const inertia = Math.max(env.inertia ?? 1, 0.1);
       const yawTorqueNm = Math.max(state.thrustBudget.yaw_kNm ?? 0, 0) * 1000;
       const moment = inertia * mass;
-      const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0;
-      const desiredAngularAccel = -state.angularVelocity / rotStop;
-      command.torque = maxAngularAccel > 0 ? clamp(desiredAngularAccel / maxAngularAccel, -1, 1) : 0;
+      let maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0;
+      
+      // Limit by angular_dps
+      const angularDps = summary?.performance?.angular_dps || summary?.angular_dps;
+      const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
+      const angularAccelCapFromDps = maxAngularVelRps / 0.2; // time_constant = 0.2
+      maxAngularAccel = Math.min(maxAngularAccel, angularAccelCapFromDps);
+      
+      // If max angular velocity is 0, disable rotation
+      if (maxAngularVelRps === 0) {
+        command.torque = 0;
+      } else {
+        const desiredAngularAccel = -state.angularVelocity / rotStop;
+        command.torque = maxAngularAccel > 0 ? clamp(desiredAngularAccel / maxAngularAccel, -1, 1) : 0;
+      }
     }
 
     const finished = speed < (env.brake_speed_epsilon ?? 0.3) && Math.abs(state.angularVelocity) < (env.brake_rot_epsilon ?? 0.02);

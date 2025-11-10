@@ -15,6 +15,7 @@
     let jerk = sanitizeJerk(options.jerk || {});
     let limiterRatio = clamp(options.speedLimiterRatio ?? 0.85, 0.2, 1);
     let profileName = handling.profileName || options.profileName || "Balanced";
+    let angularDps = options.angular_dps || null;
     let prevForwardAccel = 0;
     let prevSlipAccel = 0;
 
@@ -30,6 +31,9 @@
       }
       if (next.profileName) {
         profileName = next.profileName;
+      }
+      if (next.angular_dps !== undefined) {
+        angularDps = next.angular_dps;
       }
     }
 
@@ -69,7 +73,30 @@
       const forwardDivisor = forwardJerk.value >= 0 ? forwardCap : backwardCap;
       const thrustForward = forwardDivisor > 0 ? clamp(forwardJerk.value / forwardDivisor, -1, 1) : 0;
 
-      const torque = solveYawCommand(turnInput, slipError, state.angularVelocity ?? 0, yawAccelCap, handling);
+      // Limit angular velocity to ship specifications
+      const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
+      const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
+      let torqueModifier = 1;
+
+      // If max angular velocity is 0, completely disable rotation
+      if (maxAngularVelRps === 0) {
+        torqueModifier = 0;
+      } else if (currentAngularVel >= maxAngularVelRps * 0.95) {
+        const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
+        const turnDirection = turnInput >= 0 ? 1 : -1;
+        // Only allow torque that opposes current rotation
+        if (turnDirection === velDirection && Math.abs(turnInput) > 0.1) {
+          torqueModifier = 0;
+        }
+      }
+
+      const rawTorque = solveYawCommand(turnInput, slipError, state.angularVelocity ?? 0, yawAccelCap, handling);
+      
+      // Limit torque by angular velocity specifications
+      const maxTorqueFromDps = yawAccelCap > 0 ? (maxAngularVelRps / 0.2) / yawAccelCap : 1;
+      const limitedRawTorque = clamp(rawTorque, -maxTorqueFromDps, maxTorqueFromDps);
+      
+      const torque = limitedRawTorque * torqueModifier;
 
       // SR telemetry (§8 ТЗ v0.6.3)
       const vOverC = Math.min(speed / c, 0.999);
@@ -145,9 +172,9 @@ function solveSlipTarget(turnInput, strafeInput, speed, handling) {
   const slipThreshold = handling.slip_threshold_deg * DEG2RAD;
   const direction = turnInput !== 0 ? Math.sign(turnInput) : Math.sign(strafeInput || 1);
   const turnComponent = handling.slip_target_max * DEG2RAD * handling.responsiveness * Math.abs(turnInput);
-  const strafeComponent = (handling.strafe_to_slip_gain ?? 0.3) * strafeInput * handling.slip_target_max * DEG2RAD;
+  // Removed strafeComponent to prevent strafe from causing nose rotation
 
-  let betaTarget = direction * turnComponent + strafeComponent;
+  let betaTarget = direction * turnComponent;
   betaTarget += (handling.bias ?? 0) * slipLimit;
   betaTarget = clamp(betaTarget, -slipLimit, slipLimit);
 

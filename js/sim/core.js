@@ -21,6 +21,7 @@
       angularVelocity: 0,
       mass_t: config.mass_t ?? 1,
       thrustBudget: resolveThrust(config),
+      angular_dps: config.performance?.angular_dps || config.angular_dps,
       camera: {
         position: { x: 0, y: 0 },
         velocity: { x: 0, y: 0 }
@@ -88,6 +89,15 @@
     const moment = Math.max(env.inertia ?? 1, 0.1) * mass_kg;
     const angularAcceleration = torqueNm / moment;
     let newAngularVelocity = state.angularVelocity + angularAcceleration * dt;
+    
+    // Clamp angular velocity to 0 if ship cannot rotate
+    const angularDps = state.angular_dps;
+    if (angularDps && typeof angularDps.yaw === 'number') {
+      const maxYawRps = (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180;
+      if (maxYawRps === 0) {
+        newAngularVelocity = 0;
+      }
+    }
     
     // Safety clamp: prevent excessive angular velocities (emergency limit)
     const maxSafeAngularVel = 4 * Math.PI; // 2 rotations per second max

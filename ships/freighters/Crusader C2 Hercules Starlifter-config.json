@@ -39,9 +39,9 @@
       "vertical_mps2": 12
     },
     "angular_dps": {
-      "pitch": 0.5,
-      "yaw": 0.4,
-      "roll": 0.6
+      "pitch": 2.5,
+      "yaw": 2.0,
+      "roll": 3.0
     },
     "angular_accel_opt": {
       "pitch": null,
@@ -51,18 +51,18 @@
   },
   "propulsion": {
     "main_drive": {
-      "max_thrust_kN": 78942,
+      "max_thrust_kN": 35085,
       "sustained_thrust_kN": 59207,
       "max_power_MW": 818.6
     },
     "rcs": {
-      "forward_kN": 28068,
-      "backward_kN": 18712,
-      "lateral_kN": 35085,
-      "vertical_kN": 28068,
-      "pitch_kNm": 12986,
-      "yaw_kNm": 16232,
-      "roll_kNm": 8657
+      "forward_kN": 5000,
+      "backward_kN": 8000,
+      "lateral_kN": 10000,
+      "vertical_kN": 8000,
+      "pitch_kNm": 221800,
+      "yaw_kNm": 177450,
+      "roll_kNm": 266200
     }
   },
   "power_opt": {
