@@ -433,7 +433,8 @@
           "additionalProperties": false,
           "properties": {
             "forward_mps3": { "type": "number" },
-            "lateral_mps3": { "type": "number" }
+            "lateral_mps3": { "type": "number" },
+            "angular_rps3": { "type": "number" }
           }
         },
         "brake": {

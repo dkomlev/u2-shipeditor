@@ -26,9 +26,9 @@
     const keyState = new Set();
     let pointerVector = { x: 0, y: 0 };
     let pointerActive = false;
-    this.state = {
+    const state = {
       coupled: true,
-      autopilot: true
+      autopilot: false  // Default to manual control (toggle with R key)
     };
 
     function handleKeyDown(event) {
