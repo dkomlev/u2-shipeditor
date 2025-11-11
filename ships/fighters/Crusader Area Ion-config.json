@@ -6,9 +6,9 @@
     "author": "Star Citizen"
   },
   "classification": {
-    "size": "medium",
+    "size": "heavy",
     "type": "fighter",
-    "size_type": "medium fighter",
+    "size_type": "heavy fighter",
     "stealth": "standard",
     "variant": ""
   },
@@ -39,14 +39,20 @@
       "vertical_mps2": 28
     },
     "angular_dps": {
-      "pitch": 70,
-      "yaw": 60,
-      "roll": 100
+      "pitch": 37,
+      "yaw": 30,
+      "roll": 105
     },
     "angular_accel_opt": {
       "pitch": null,
       "yaw": null,
       "roll": null
+    },
+    "accel_fwd_mps2": 60,
+    "strafe_mps2": {
+      "x": 55,
+      "y": 55,
+      "z": 55
     }
   },
   "propulsion": {
@@ -63,7 +69,9 @@
       "pitch_kNm": 744,
       "yaw_kNm": 930,
       "roll_kNm": 496
-    }
+    },
+    "main_thrust_MN": 19.5,
+    "rcs_budget_MN": 3.9
   },
   "power_opt": {
     "reactor_MW": 113.7,
@@ -109,11 +117,11 @@
     "jerk": {
       "forward_mps3": 220,
       "lateral_mps3": 180,
-      "angular_rps3": 0.12
+      "angular_rps3": 0.25
     },
     "brake": {
-      "g_sustain": 5.5,
-      "g_boost": 8,
+      "g_sustain": 5.200552686187434,
+      "g_boost": 7.341956733441084,
       "boost_duration_s": 3,
       "boost_cooldown_s": 14
     },

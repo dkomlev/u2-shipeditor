@@ -1,35 +1,35 @@
 {
   "meta": {
-    "id": "alien-heavy-fighter",
-    "name": "Alien Heavy Fighter",
+    "id": "esperia-blade",
+    "name": "Esperia Blade",
     "version": "0.6.4",
     "author": "Space Clash"
   },
   "classification": {
-    "size": "medium",
+    "size": "small",
     "type": "fighter",
-    "size_type": "medium fighter",
+    "size_type": "small fighter",
     "stealth": "standard",
     "variant": ""
   },
   "geometry": {
-    "length_m": 30,
-    "width_m": 30,
-    "height_m": 9,
-    "hull_radius_m": 21.21
+    "length_m": 20.5,
+    "width_m": 16.5,
+    "height_m": 5.5,
+    "hull_radius_m": 13.16
   },
   "mass": {
-    "dry_t": 75
+    "dry_t": 23
   },
   "inertia_opt": {
-    "Ixx": 6131250,
-    "Iyy": 6131250,
-    "Izz": 11250000
+    "Ixx": 579791.67,
+    "Iyy": 863458.33,
+    "Izz": 1327291.67
   },
   "signatures": {
-    "IR": 3,
-    "EM": 3,
-    "CS": 3
+    "IR": 2,
+    "EM": 2,
+    "CS": 2
   },
   "performance": {
     "accel_profile": {
@@ -39,14 +39,20 @@
       "vertical_mps2": 36
     },
     "angular_dps": {
-      "pitch": 105,
-      "yaw": 95,
-      "roll": 140
+      "pitch": 70,
+      "yaw": 52,
+      "roll": 195
     },
     "angular_accel_opt": {
       "pitch": null,
       "yaw": null,
       "roll": null
+    },
+    "accel_fwd_mps2": 80,
+    "strafe_mps2": {
+      "x": 80,
+      "y": 80,
+      "z": 80
     }
   },
   "propulsion": {
@@ -63,11 +69,13 @@
       "pitch_kNm": 565,
       "yaw_kNm": 707,
       "roll_kNm": 377
-    }
+    },
+    "main_thrust_MN": 1.84,
+    "rcs_budget_MN": 0.55
   },
   "power_opt": {
-    "reactor_MW": 26.3,
-    "cooling_MW": 21
+    "reactor_MW": 8,
+    "cooling_MW": 6.4
   },
   "payload": {
     "cargo_scu": 0,
@@ -84,21 +92,21 @@
   },
   "assist": {
     "handling_style": "Drift",
-    "speed_limiter_ratio": 0.78,
+    "speed_limiter_ratio": 0.82,
     "handling": {
       "stab_gain": 1,
       "stab_damping": 0.9,
       "slip_threshold_deg": 8,
-      "slip_limit_deg": 16,
+      "slip_limit_deg": 18,
       "slip_correction_gain": 1.5,
       "nose_follow_input": 0.25,
       "anticipation_gain": 0.14,
-      "oversteer_bias": 0.15,
+      "oversteer_bias": 0.2,
       "bias": 0.2,
-      "responsiveness": 1.1,
-      "slip_target_max": 18,
-      "traction_control": 0.25,
-      "cap_main_coupled": 0.7,
+      "responsiveness": 1.2,
+      "slip_target_max": 19,
+      "traction_control": 0.2,
+      "cap_main_coupled": 0.85,
       "lat_authority": 0.95,
       "turn_authority": 0.95,
       "turn_assist": 0.55,
@@ -112,12 +120,12 @@
       "angular_rps3": 0.25
     },
     "brake": {
-      "g_sustain": 5.5,
-      "g_boost": 8,
+      "g_sustain": 6.9340702482499115,
+      "g_boost": 9.78927564458811,
       "boost_duration_s": 3,
-      "boost_cooldown_s": 14
+      "boost_cooldown_s": 12
     },
-    "preset": "Muscle"
+    "preset": "Sport"
   },
   "tags": [
     "medium",

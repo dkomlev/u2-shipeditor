@@ -1,14 +1,14 @@
 {
   "meta": {
-    "id": "Stealth Fighter",
-    "name": "Stealth Fighter",
+    "id": "Stealth Interceptor",
+    "name": "Stelth Intercepor",
     "version": "0.6.4",
     "author": "U2"
   },
   "classification": {
     "size": "small",
-    "type": "fighter",
-    "size_type": "small fighter",
+    "type": "interceptor",
+    "size_type": "small interceptor",
     "stealth": "stealth",
     "variant": "Stealth Fighter"
   },
@@ -27,9 +27,9 @@
     "Izz": 2558792.19
   },
   "signatures": {
-    "IR": 2,
-    "EM": 2,
-    "CS": 2
+    "IR": 1,
+    "EM": 1,
+    "CS": 1
   },
   "performance": {
     "accel_profile": {
@@ -39,9 +39,9 @@
       "vertical_mps2": 40
     },
     "angular_dps": {
-      "pitch": 90,
-      "yaw": 75,
-      "roll": 120
+      "pitch": 62,
+      "yaw": 43,
+      "roll": 160
     },
     "angular_accel_opt": {
       "pitch": null,
@@ -50,11 +50,11 @@
     },
     "scm_mps": 230,
     "vmax_mps": 1200,
-    "accel_fwd_mps2": 80,
+    "accel_fwd_mps2": 90,
     "strafe_mps2": {
-      "x": 80,
-      "y": 80,
-      "z": 80
+      "x": 85,
+      "y": 85,
+      "z": 85
     }
   },
   "propulsion": {
@@ -72,8 +72,8 @@
       "yaw_kNm": 320,
       "roll_kNm": 550
     },
-    "main_thrust_MN": 4.7,
-    "rcs_budget_MN": 1.41
+    "main_thrust_MN": 5.28,
+    "rcs_budget_MN": 1.58
   },
   "power_opt": {
     "reactor_MW": 20.5,
@@ -93,22 +93,22 @@
     "summary": "2–3×S3 + missiles"
   },
   "assist": {
-    "handling_style": "Balanced",
-    "speed_limiter_ratio": 0.738,
+    "handling_style": "Drift",
+    "speed_limiter_ratio": 0.765,
     "handling": {
       "stab_gain": 1,
       "stab_damping": 0.9,
       "slip_threshold_deg": 8,
-      "slip_limit_deg": 16.56,
+      "slip_limit_deg": 18.4,
       "slip_correction_gain": 1.5,
       "nose_follow_input": 0.25,
       "anticipation_gain": 0.14,
-      "oversteer_bias": 0.2,
+      "oversteer_bias": 0.25,
       "bias": 0.2,
-      "responsiveness": 1.2,
-      "slip_target_max": 17.48,
+      "responsiveness": 1.3,
+      "slip_target_max": 18.4,
       "traction_control": 0.25,
-      "cap_main_coupled": 0.722,
+      "cap_main_coupled": 0.68,
       "lat_authority": 0.95,
       "turn_authority": 0.95,
       "turn_assist": 0.55,
@@ -122,12 +122,12 @@
       "angular_rps3": 0.25
     },
     "brake": {
-      "g_sustain": 6.9340702482499115,
-      "g_boost": 9.78927564458811,
+      "g_sustain": 7.5,
+      "g_boost": 10.2,
       "boost_duration_s": 3,
       "boost_cooldown_s": 12
     },
-    "preset": "Sport"
+    "preset": "Rally"
   },
   "tags": [
     "small",

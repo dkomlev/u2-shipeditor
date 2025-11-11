@@ -6,9 +6,9 @@
     "author": "Star Citizen"
   },
   "classification": {
-    "size": "small",
+    "size": "medium",
     "type": "fighter",
-    "size_type": "small fighter",
+    "size_type": "medium fighter",
     "stealth": "standard",
     "variant": ""
   },
@@ -39,14 +39,20 @@
       "vertical_mps2": 38
     },
     "angular_dps": {
-      "pitch": 90,
-      "yaw": 75,
-      "roll": 120
+      "pitch": 53,
+      "yaw": 42,
+      "roll": 147
     },
     "angular_accel_opt": {
       "pitch": null,
       "yaw": null,
       "roll": null
+    },
+    "accel_fwd_mps2": 80,
+    "strafe_mps2": {
+      "x": 80,
+      "y": 80,
+      "z": 80
     }
   },
   "propulsion": {
@@ -63,7 +69,9 @@
       "pitch_kNm": 481,
       "yaw_kNm": 602,
       "roll_kNm": 321
-    }
+    },
+    "main_thrust_MN": 5.76,
+    "rcs_budget_MN": 1.73
   },
   "power_opt": {
     "reactor_MW": 25.2,
@@ -84,21 +92,21 @@
   },
   "assist": {
     "handling_style": "Drift",
-    "speed_limiter_ratio": 0.82,
+    "speed_limiter_ratio": 0.78,
     "handling": {
       "stab_gain": 1,
       "stab_damping": 0.9,
       "slip_threshold_deg": 8,
-      "slip_limit_deg": 18,
+      "slip_limit_deg": 16,
       "slip_correction_gain": 1.5,
       "nose_follow_input": 0.25,
       "anticipation_gain": 0.14,
-      "oversteer_bias": 0.2,
+      "oversteer_bias": 0.15,
       "bias": 0.2,
-      "responsiveness": 1.2,
-      "slip_target_max": 19,
-      "traction_control": 0.2,
-      "cap_main_coupled": 0.85,
+      "responsiveness": 1.1,
+      "slip_target_max": 18,
+      "traction_control": 0.25,
+      "cap_main_coupled": 0.7,
       "lat_authority": 0.95,
       "turn_authority": 0.95,
       "turn_assist": 0.55,
@@ -112,12 +120,12 @@
       "angular_rps3": 0.25
     },
     "brake": {
-      "g_sustain": 7,
-      "g_boost": 10,
+      "g_sustain": 5.5,
+      "g_boost": 8,
       "boost_duration_s": 3,
-      "boost_cooldown_s": 12
+      "boost_cooldown_s": 14
     },
-    "preset": "Sport"
+    "preset": "Muscle"
   },
   "tags": [
     "small",

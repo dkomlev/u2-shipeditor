@@ -27,8 +27,8 @@
     "Izz": 237149001000
   },
   "signatures": {
-    "IR": 4,
-    "EM": 4,
+    "IR": 5,
+    "EM": 5,
     "CS": 5
   },
   "performance": {
@@ -39,14 +39,20 @@
       "vertical_mps2": 3
     },
     "angular_dps": {
-      "pitch": 0.5,
-      "yaw": 0.5,
-      "roll": 0.5
+      "pitch": 7,
+      "yaw": 7,
+      "roll": 12
     },
     "angular_accel_opt": {
       "pitch": null,
       "yaw": null,
       "roll": null
+    },
+    "accel_fwd_mps2": 6,
+    "strafe_mps2": {
+      "x": 6,
+      "y": 6,
+      "z": 10
     }
   },
   "propulsion": {
@@ -63,7 +69,9 @@
       "pitch_kNm": 10375000,
       "yaw_kNm": 10375000,
       "roll_kNm": 10375000
-    }
+    },
+    "main_thrust_MN": 227.12,
+    "rcs_budget_MN": 45.42
   },
   "power_opt": {
     "reactor_MW": 13248.9,
@@ -109,11 +117,11 @@
     "jerk": {
       "forward_mps3": 140,
       "lateral_mps3": 110,
-      "angular_rps3": 0.03
+      "angular_rps3": 0.25
     },
     "brake": {
-      "g_sustain": 2.2,
-      "g_boost": 3.6,
+      "g_sustain": 0.5200552686187434,
+      "g_boost": 0.7341956733441083,
       "boost_duration_s": 6,
       "boost_cooldown_s": 35
     },
