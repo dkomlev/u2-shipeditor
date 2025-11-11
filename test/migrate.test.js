@@ -1,11 +1,11 @@
-// Test migration from v0.6.0 to v0.6.3
+// Test migration from v0.6.0 to v0.6.4
 import { migrateToV06 } from '../js/migrate.js';
 import { readFileSync } from 'fs';
 
 // Load v0.6.0 config
-const oldConfig = JSON.parse(readFileSync('./configs/small_stealth_recon.json', 'utf-8'));
+const oldConfig = JSON.parse(readFileSync('./configs/medium_miner.json', 'utf-8'));
 
-console.log('Testing migration v0.6.0 → v0.6.3...\n');
+console.log('Testing migration v0.6.0 → v0.6.4...\n');
 console.log('Input version:', oldConfig.meta.version);
 console.log('Input propulsion:', JSON.stringify(oldConfig.propulsion, null, 2));
 console.log('Input performance:', JSON.stringify(oldConfig.performance, null, 2));
@@ -23,7 +23,7 @@ console.log('Legacy_v053:', migrated.legacy_v053);
 
 // Verify critical fields
 const tests = [
-  { name: 'Version updated to 0.6.3', pass: migrated.meta.version === '0.6.3' },
+  { name: 'Version updated to 0.6.4', pass: migrated.meta.version === '0.6.4' },
   { name: 'Has accel_profile', pass: migrated.performance.accel_profile !== undefined },
   { name: 'No scm_mps', pass: migrated.performance.scm_mps === undefined },
   { name: 'No vmax_mps', pass: migrated.performance.vmax_mps === undefined },

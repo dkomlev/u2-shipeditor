@@ -43,7 +43,7 @@ const cloneAssistDefaults = () => JSON.parse(JSON.stringify(DEFAULT_ASSIST));
 export function buildEmptyConfig({
   id = (crypto?.randomUUID?.() || String(Date.now())),
   name = "New Ship",
-  version = "0.6.3",
+  version = "0.6.4",
   author = ""
 } = {}) {
   const mass_t = 60;
@@ -51,7 +51,7 @@ export function buildEmptyConfig({
   const lateral_mps2 = 50;
   
   return {
-    meta: { id, name, version, author },
+    meta: { id, name, version: "0.6.4", author },
     classification: { size: "small", type: "fighter", size_type: "small fighter", stealth: "standard", variant: "" },
     geometry: {
       length_m: 20,

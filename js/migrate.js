@@ -131,7 +131,7 @@ export function migrateToV06(old) {
     meta: {
       id: old.id || old.meta?.id || (crypto?.randomUUID?.() || String(Date.now())),
       name: old.name || old.meta?.name || 'Unnamed',
-      version: '0.6.3',
+      version: '0.6.4',
       author: old.meta?.author || old.author || ''
     },
     classification: { size, type, size_type: sizeType(size,type), stealth, variant },

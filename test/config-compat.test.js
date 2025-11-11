@@ -17,7 +17,7 @@ console.log('\nmain_drive:', mainDrive);
 console.log('rcs:', rcs);
 
 if (mainDrive && rcs) {
-  console.log('\n✓ Config structure is compatible with core.js v0.6.3');
+  console.log('\n✓ Config structure is compatible with core.js v0.6.4');
 } else {
   console.log('\n✗ Config missing required fields for core.js');
   process.exit(1);

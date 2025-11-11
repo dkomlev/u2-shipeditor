@@ -298,7 +298,7 @@ function updateSpritePreview() {
 function renderOutput() {
   const exportObj = JSON.parse(JSON.stringify(state.ship));
   exportObj.classification.size_type = sizeType(exportObj.classification.size, exportObj.classification.type);
-  exportObj.meta.version = exportObj.meta.version || '0.6.0';
+  exportObj.meta.version = exportObj.meta.version || '0.6.4';
   dom.out.textContent = JSON.stringify(exportObj, null, 2);
 }
 

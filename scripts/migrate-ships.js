@@ -1,4 +1,4 @@
-// Migrate all ship configs in ships/ to v0.6.3
+// Migrate all ship configs in ships/ to v0.6.4
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -28,9 +28,9 @@ walkDir(shipsDir, (filePath) => {
     const content = readFileSync(filePath, 'utf-8');
     const config = JSON.parse(content);
     
-    // Skip if already v0.6.3
-    if (config.meta?.version === '0.6.3') {
-      console.log(`⏭  Skipping ${filePath} (already v0.6.3)`);
+    // Skip if already v0.6.4
+    if (config.meta?.version === '0.6.4') {
+      console.log(`⏭  Skipping ${filePath} (already v0.6.4)`);
       skippedCount++;
       return;
     }
@@ -40,7 +40,7 @@ walkDir(shipsDir, (filePath) => {
     
     // Write back
     writeFileSync(filePath, JSON.stringify(migrated, null, 2) + '\n', 'utf-8');
-    console.log(`✓ Migrated ${filePath} (${config.meta?.version || 'unknown'} → 0.6.3)`);
+    console.log(`✓ Migrated ${filePath} (${config.meta?.version || 'unknown'} → 0.6.4)`);
     migratedCount++;
   } catch (error) {
     console.error(`✗ Failed to migrate ${filePath}:`, error.message);
