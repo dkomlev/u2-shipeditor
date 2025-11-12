@@ -1,8 +1,13 @@
 # Universe Unlimited - Changelog
 
-## Version 0.7.2 Build 001 (Current)
+## Version 0.7.2 Build 003 (Current)
 
 ### Physics Improvements
+
+- Refactor: extracted SR helpers to `js/sim/relativity.js`; `core.js` now calls the helpers in both Node and browser.
+- Rotation: yaw inertia now scales with γ_rot computed from rim speed v_rim = |ω|·R_yaw; Izz_rel = Izz · γ_rot; numerical guard keeps v_rim < c.
+- Diagnostics: `diagnostics/fastest-stand.html` now plots γ_rot and v_rim/c; includes relativity.js.
+- Verified linear SR tests pass; rotation change is physically motivated and numerically stable.
 
 **Corrected Relativistic Velocity Calculation**
 - Fixed velocity update in `core.js` to use proper Special Relativity formula

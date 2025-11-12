@@ -7,6 +7,11 @@
     root.U2SimCore = factory();
   }
 })(typeof self !== "undefined" ? self : this, function () {
+  // Try to resolve relativity helpers in both Node and browser
+  const Rel = (typeof module === "object" && module?.exports)
+    ? (function(){ try { return require("./relativity.js"); } catch (_) { return null; } })()
+    : (typeof self !== "undefined" ? self.U2Relativity : (typeof globalThis !== "undefined" ? globalThis.U2Relativity : null));
+
   const clamp01 = (v) => Math.min(Math.max(v, 0), 1);
   const TAU = Math.PI * 2;
   const KN_TO_N = 1000;
@@ -25,6 +30,9 @@
     const defaultIyy = 0.12 * mass_kg * length_m * length_m; // Pitch (around lateral axis)
     const defaultIzz = 0.15 * mass_kg * length_m * length_m; // Yaw (around vertical axis)
     
+    // Effective yaw radius for rotational SR effects (approx. half of max planform)
+    const yaw_radius_m = 0.5 * Math.max(length_m, width_m);
+
     return {
       time: 0,
       position: { x: 0, y: 0 },
@@ -39,6 +47,9 @@
         Ixx: config.inertia_opt?.Ixx ?? defaultIxx,
         Iyy: config.inertia_opt?.Iyy ?? defaultIyy,
         Izz: config.inertia_opt?.Izz ?? defaultIzz
+      },
+      rotational: {
+        yaw_radius_m: yaw_radius_m
       },
       camera: {
         position: { x: 0, y: 0 },
@@ -97,24 +108,30 @@
     const Fx = worldAx * mass_kg; // N
     const Fy = worldAy * mass_kg; // N
 
-    // Update momentum: p_new = p_old + F*dt
-    const px = (state.momentum?.x ?? 0) + Fx * dt;
-    const py = (state.momentum?.y ?? 0) + Fy * dt;
+    // Update momentum via helper if available, else inline fallback
+    let px, py;
+    if (Rel && Rel.updateMomentum) {
+      const p = Rel.updateMomentum(state.momentum?.x ?? 0, state.momentum?.y ?? 0, Fx, Fy, dt);
+      px = p.x; py = p.y;
+    } else {
+      px = (state.momentum?.x ?? 0) + Fx * dt;
+      py = (state.momentum?.y ?? 0) + Fy * dt;
+    }
 
-    // Recover velocity from momentum using SR formula
-    // From p = γmv and γ = sqrt(1 + (p/mc)²), we get:
-    // v = p / sqrt(m² + p²/c²)
-    // This naturally ensures v < c without artificial clamping
-    const p2 = px * px + py * py;
-    const m2 = mass_kg * mass_kg;
-    const c2 = c * c;
-    const denominator = Math.sqrt(m2 + p2 / c2);
-    
-    const vx = px / denominator;
-    const vy = py / denominator;
-    
-    // Calculate gamma for relativistic effects on rotation
-    const gamma = Math.sqrt(1 + p2 / (m2 * c2));
+    // Recover velocity (and gamma) from momentum using SR helpers if available
+    let vx, vy, gamma;
+    if (Rel && Rel.velocityFromMomentum) {
+      const res = Rel.velocityFromMomentum(px, py, mass_kg, c);
+      vx = res.vx; vy = res.vy; gamma = res.gamma;
+    } else {
+      const p2 = px * px + py * py;
+      const m2 = mass_kg * mass_kg;
+      const c2 = c * c;
+      const denominator = Math.sqrt(m2 + p2 / c2);
+      vx = px / denominator;
+      vy = py / denominator;
+      gamma = Math.sqrt(1 + p2 / (m2 * c2));
+    }
 
     const newOrientation = wrapAngle(state.orientation + state.angularVelocity * dt);
     const torqueNm = torqueInput * (state.thrustBudget.yaw_kNm ?? 0) * KNM_TO_NM;
@@ -122,10 +139,27 @@
     // Use proper moment of inertia for yaw rotation (around vertical axis)
     // In 2D simulation, we only have yaw, so use Izz
     const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass_kg * 20 * 20); // fallback
-    // Approximate relativistic increase of rotational inertia
-    const Izz_rel = Izz * gamma;
+    // Relativistic increase of rotational inertia using rim-speed gamma
+    const yawRadius = state.rotational?.yaw_radius_m ?? 0;
+    let gamma_rot = 1;
+    if (yawRadius > 0) {
+      const v_rim = Math.abs(state.angularVelocity) * yawRadius;
+      const beta_rim = Math.min(v_rim / c, 0.999999);
+      gamma_rot = 1 / Math.sqrt(1 - beta_rim * beta_rim);
+    } else {
+      gamma_rot = gamma; // fallback to linear gamma
+    }
+    const Izz_rel = Izz * gamma_rot;
     const angularAcceleration = torqueNm / Izz_rel;
     let newAngularVelocity = state.angularVelocity + angularAcceleration * dt;
+
+    // Numerical guard: ensure rim speed stays below c
+    if (yawRadius > 0) {
+      const maxOmega = (c * 0.999999) / yawRadius;
+      if (Math.abs(newAngularVelocity) > maxOmega) {
+        newAngularVelocity = Math.sign(newAngularVelocity) * maxOmega;
+      }
+    }
     
     // Pure physics - no artificial limits
     // Angular velocity is limited only by ship's physical capabilities (RCS thrust and inertia)

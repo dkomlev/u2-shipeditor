@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>U2 Diagnostics · Fastest Ship SR Stand v0.7.1 (build 006)</title>
+  <title>U2 Diagnostics · Fastest Ship SR Stand v0.7.2 (build 003)</title>
   <style>
     body { font-family: Inter, -apple-system, Segoe UI, sans-serif; margin: 0; background: #0b1020; color: #e6eef7; }
     .wrap { padding: 16px; max-width: 1200px; margin: 0 auto; }
@@ -26,7 +26,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Diagnostics: Fastest Ship SR Stand <span class="muted">v0.7.1 build 006</span></h1>
+    <h1>Diagnostics: Fastest Ship SR Stand <span class="muted">v0.7.2 build 003</span></h1>
     <p class="muted">Цель: симулировать самый быстрый корабль на полном тяговом режиме и записать v(t), v/c, γ(t), оценить время достижения 0.5c/0.9c/0.99c с учётом релятивистской динамики.</p>
 
     <div class="row">
@@ -100,6 +100,9 @@
           <div class="kv">t@0.99c <span id="t099c" class="mono">—</span></div>
           <div class="kv">Vmax (v/c) <span id="vmax" class="mono">—</span></div>
           <div class="kv">γ max <span id="gmax" class="mono">—</span></div>
+          <div class="kv">ω max (рад/с) <span id="wmax" class="mono">—</span></div>
+          <div class="kv">v_rim/c max <span id="vrimMax" class="mono">—</span></div>
+          <div class="kv">γ_rot max <span id="grotMax" class="mono">—</span></div>
           <div class="kv">Шагов <span id="steps" class="mono">—</span></div>
         </div>
       </div>
@@ -111,13 +114,14 @@
         <canvas id="chartSpeed"></canvas>
       </div>
       <div class="card">
-        <h2>γ(t)</h2>
+        <h2>γ(t) и γ_rot(t)</h2>
         <canvas id="chartGamma"></canvas>
       </div>
     </div>
   </div>
 
   <script src="../js/lib/app-config-loader.js"></script>
+  <script src="../js/sim/relativity.js"></script>
   <script src="../js/sim/core.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
@@ -190,8 +194,8 @@
       const thrustNorm = Number($('thrust').value || 1);
       const torqueNorm = Number($('torque').value || 0);
 
-      const times = [], speeds = [], vOverCs = [], gammas = [];
-      let t05=null, t09=null, t099=null, vmax=0, gmax=0, steps=0;
+      const times = [], speeds = [], vOverCs = [], gammas = [], gammaRots = [], vRimOverCs = [], omegas = [];
+      let t05=null, t09=null, t099=null, vmax=0, gmax=0, steps=0, vrmax=0, grotMax=0, wmax=0;
 
       $('status').textContent = 'Симуляция...';
       for (let t=0; t<duration && app.running; t+=dt) {
@@ -201,11 +205,16 @@
         if (steps % samples === 0) {
           const v = Math.hypot(state.velocity.x, state.velocity.y);
           const vc = v / c; const g = gammaFromV(v, c);
-          times.push(t); speeds.push(v); vOverCs.push(vc); gammas.push(g);
+          const yawR = state.rotational?.yaw_radius_m || (0.5*Math.max(geomL, geomW));
+          const w = Math.abs(state.angularVelocity);
+          const v_rim = w * yawR;
+          const vr = Math.min(v_rim / c, 0.999999);
+          const grot = 1/Math.sqrt(1 - vr*vr);
+          times.push(t); speeds.push(v); vOverCs.push(vc); gammas.push(g); gammaRots.push(grot); vRimOverCs.push(vr); omegas.push(w);
           if (!t05 && vc>=0.5) t05 = t.toFixed(1);
           if (!t09 && vc>=0.9) t09 = t.toFixed(1);
           if (!t099 && vc>=0.99) t099 = t.toFixed(1);
-          if (vc>vmax) vmax = vc; if (g>gmax) gmax = g;
+          if (vc>vmax) vmax = vc; if (g>gmax) gmax = g; if (vr>vrmax) vrmax=vr; if (grot>grotMax) grotMax=grot; if (w>wmax) wmax=w;
         }
       }
 
@@ -214,10 +223,20 @@
       $('t099c').textContent = t099 ?? '—';
       $('vmax').textContent = vmax.toFixed(6);
       $('gmax').textContent = gmax.toFixed(3);
+      $('vrimMax').textContent = vrmax.toFixed(6);
+      $('grotMax').textContent = grotMax.toFixed(3);
+      $('wmax').textContent = wmax.toFixed(3);
       $('steps').textContent = String(steps);
 
       drawLine(app.ctxSpeed, times, vOverCs, '#5dd8ff');
-      drawLine(app.ctxGamma, times, gammas, '#a78bfa');
+      // Overlay gamma and gamma_rot by normalizing scales (draw gamma_rot as separate series on same canvas)
+      const ctx = app.ctxGamma;
+      drawLine(ctx, times, gammas, '#a78bfa');
+      // Draw gamma_rot on same axes
+      ctx.save();
+      ctx.globalAlpha = 0.8;
+      drawLine(ctx, times, gammaRots, '#f59e0b');
+      ctx.restore();
       $('status').textContent = 'Готово'; $('runBtn').disabled = false; $('stopBtn').disabled = true; app.running = false;
     }
 
