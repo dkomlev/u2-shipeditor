@@ -14,18 +14,18 @@
     let randomTimer = 0;
     let randomTorque = 0;
     let boostCooldownTimer = 0;
-    let prevAngularAccel = 0;  // Track angular acceleration for jerk limiting
+    let prevAngularAccel = 0;
     const coupled = CoupledController?.createCoupledController
       ? CoupledController.createCoupledController({
           handling: summary.assist?.handling,
           jerk: summary.assist?.jerk,
-          config: summary,  // Pass full ship summary for physical calculations
+          config: summary,
           profileName: summary.assist?.handling_style,
           angular_dps: summary.performance?.angular_dps || summary.angular_dps
         })
       : null;
 
-    function update(state, input, env = {}) {
+    function update(state, input, env) {
       const dt = env.dt_sec ?? 1 / 60;
       const modeCoupled = !!input.modeCoupled;
       const autopilot = !!input.autopilot;
@@ -35,18 +35,15 @@
         torque: clamp(input.torque ?? 0, -1, 1)
       };
 
-      // Update boost cooldown
       if (boostCooldownTimer > 0) {
         boostCooldownTimer -= dt;
       }
 
       if (input.brake) {
         const brakeResult = applyBrake(state, env, summary || {}, input.boost, boostCooldownTimer);
-        // Start cooldown if boost was used
         if (input.boost && boostCooldownTimer <= 0 && summary?.assist?.brake) {
           boostCooldownTimer = summary.assist.brake.boost_cooldown_s ?? 15;
         }
-        ensureRelativisticContext(state, env);
         return {
           command: brakeResult.command,
           mode: "Brake",
@@ -91,41 +88,33 @@
         command.thrustRight = coupledResult.command.thrustRight;
         command.torque = coupledResult.command.torque;
         telemetry = coupledResult.telemetry;
-        prevAngularAccel = 0;  // Reset in Coupled mode
+        prevAngularAccel = 0;
       } else {
-        ensureRelativisticContext(state, env);
-        // Decoupled: limit torque by available thrust budget and angular velocity limits
         const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
         const thrustBudget = state.thrustBudget || {};
         const yawTorqueNm = Math.max(thrustBudget.yaw_kNm ?? 0, 0) * 1000;
         const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
         const maxAngularAccel = yawTorqueNm > 0 && Izz > 0 ? yawTorqueNm / Izz : 0;
 
-        // Limit angular velocity to ship specifications
         const angularDps = summary.performance?.angular_dps || summary.angular_dps;
         const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
         const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
 
-        // Convert normalized torque into physical angular acceleration request
         let desiredAngularAccel = maxAngularAccel > 0 ? command.torque * maxAngularAccel : 0;
 
-        // Limit angular acceleration by angular velocity limits (degrees per second)
-        const maxAngularAccelFromDps = maxAngularVelRps / 0.2; // time_constant = 0.2s for smooth limiting
+        const maxAngularAccelFromDps = maxAngularVelRps / 0.2;
         desiredAngularAccel = clamp(desiredAngularAccel, -maxAngularAccelFromDps, maxAngularAccelFromDps);
 
-        // If max angular velocity is 0, completely disable rotation
         if (maxAngularVelRps === 0 || maxAngularAccel <= 0) {
           desiredAngularAccel = 0;
         } else if (currentAngularVel >= maxAngularVelRps * 0.95) {
           const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
           const accelDirection = desiredAngularAccel >= 0 ? 1 : -1;
-          // Only allow acceleration that opposes current rotation
           if (accelDirection === velDirection && Math.abs(desiredAngularAccel) > 0.1 * maxAngularAccel) {
             desiredAngularAccel = 0;
           }
         }
 
-        // Decoupled: apply angular jerk limiting for smooth rotation ramp (physical units)
         const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 2.0;
         const jerkResult = applyAngularJerk(prevAngularAccel, desiredAngularAccel, angularJerkLimit, dt);
         prevAngularAccel = jerkResult.value;
@@ -152,7 +141,6 @@
     const g0 = 9.80665;
     const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
     
-    // Use assist.brake settings if available, otherwise fallback to env
     const assistBrake = summary?.assist?.brake;
     const canBoost = boostRequested && cooldownRemaining <= 0;
     const gTarget = assistBrake 
@@ -161,15 +149,13 @@
     
     const stopTime = Math.max(env.brake_time ?? 0.25, 0.05);
     
-    // Calculate rotational stop time based on ship's inertia and available torque
     const inertia = Math.max(env.inertia ?? 1, 0.1);
     const yawTorqueNm = Math.max(state.thrustBudget.yaw_kNm ?? 0, 0) * 1000;
     const moment = inertia * mass;
     const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0.1;
     const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
-    // Stop time should be enough to decelerate from current velocity with available torque
     const calculatedRotStop = currentAngularVel > 0 && maxAngularAccel > 0 ? currentAngularVel / maxAngularAccel : 0.15;
-    const rotStop = Math.max(Math.min(calculatedRotStop * 2, 4.0), 0.2); // Clamp between 0.2 and 4.0 seconds
+    const rotStop = Math.max(Math.min(calculatedRotStop * 2, 4.0), 0.2);
     
     const vel = state.velocity;
     const speed = Math.hypot(vel.x, vel.y);
@@ -178,7 +164,6 @@
     const forwardSpeed = vel.x * fwdVec.x + vel.y * fwdVec.y;
     const rightSpeed = vel.x * rightVec.x + vel.y * rightVec.y;
 
-    // SR-клампы для Brake (§4.3 ТЗ)
     const c = env.c_mps ?? 10000;
     const vOverC = Math.min(speed / c, 0.999);
     const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
@@ -187,7 +172,6 @@
     const rawBackwardCap = toAccel(state.thrustBudget.backward_kN, mass);
     const rawLateralCap = toAccel(state.thrustBudget.lateral_kN, mass);
 
-    // Apply SR clamps
     const forwardCap = Math.min(rawForwardCap / Math.pow(gamma, 3), gTarget * g0);
     const backwardCap = Math.min(rawBackwardCap / Math.pow(gamma, 3), gTarget * g0);
     const lateralCap = Math.min(rawLateralCap / gamma, gTarget * g0);
@@ -198,9 +182,7 @@
       torque: 0
     };
 
-    // Edge case: very low speed (§4.3 ТЗ)
     if (speed < 1e-10) {
-      // Only rotational damping
     } else {
       const desiredForwardAccel = -forwardSpeed / stopTime;
       const desiredRightAccel = -rightSpeed / stopTime;
@@ -208,19 +190,16 @@
       command.thrustRight = normalizeAccel(desiredRightAccel, lateralCap, lateralCap);
     }
 
-    // Edge case: very low angular velocity
     if (Math.abs(state.angularVelocity) > 1e-10) {
       const yawTorqueNm = Math.max(state.thrustBudget.yaw_kNm ?? 0, 0) * 1000;
       const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
       let maxAngularAccel = yawTorqueNm > 0 && Izz > 0 ? yawTorqueNm / Izz : 0;
       
-      // Limit by angular_dps
       const angularDps = summary?.performance?.angular_dps || summary?.angular_dps;
       const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
-      const angularAccelCapFromDps = maxAngularVelRps / 0.2; // time_constant = 0.2
+      const angularAccelCapFromDps = maxAngularVelRps / 0.2;
       maxAngularAccel = Math.min(maxAngularAccel, angularAccelCapFromDps);
       
-      // If max angular velocity is 0, disable rotation
       if (maxAngularVelRps === 0) {
         command.torque = 0;
       } else {
@@ -257,17 +236,10 @@
 
   function buildTelemetry(state, assist = {}, env = {}) {
     const beta = calcSlip(state) * (180 / Math.PI);
-    const relativistic = env.relativistic || {};
-    const c = env.c_mps ?? relativistic.c_mps ?? 10000;
-    const speed = env.speed_mps ?? relativistic.speed_mps ?? Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
-    let vOverC = env.v_over_c ?? relativistic.v_over_c;
-    if (!Number.isFinite(vOverC)) {
-      vOverC = c > 0 ? Math.min(speed / c, 0.999999) : 0;
-    }
-    let gamma = env.gamma ?? relativistic.gamma;
-    if (!Number.isFinite(gamma)) {
-      gamma = 1 / Math.sqrt(1 - Math.min(vOverC * vOverC, 0.999999));
-    }
+    const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
+    const c = env.c_mps ?? 10000;
+    const vOverC = Math.min(speed / c, 0.999);
+    const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
     
     return {
       slip_deg: beta,
@@ -282,23 +254,6 @@
       a_fwd_eff_mps2: 0,
       a_lat_eff_mps2: 0
     };
-  }
-
-  function ensureRelativisticContext(state, env = {}) {
-    const c = env.c_mps ?? 10000;
-    const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
-    const vOverC = c > 0 ? Math.min(speed / c, 0.999999) : 0;
-    const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
-    const relativistic = env.relativistic || {};
-    relativistic.gamma = gamma;
-    relativistic.v_over_c = vOverC;
-    relativistic.speed_mps = speed;
-    relativistic.c_mps = c;
-    env.relativistic = relativistic;
-    env.gamma = gamma;
-    env.v_over_c = vOverC;
-    env.speed_mps = speed;
-    return relativistic;
   }
 
   function calcSlip(state) {

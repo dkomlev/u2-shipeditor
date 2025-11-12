@@ -25,7 +25,6 @@
       if (next.jerk) {
         jerk = sanitizeJerk(next.jerk, next.config || options.config || {});
       }
-      // speedLimiterRatio removed - no artificial limits
       if (next.profileName) {
         profileName = next.profileName;
       }
@@ -37,31 +36,24 @@
     function update(state, input, env = {}) {
       const dt = env.dt_sec ?? 1 / 60;
       const c = env.c_mps ?? 10000;
-      const vmaxRuntime = env.vmax_runtime ?? c;
 
       const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
       const thrustBudget = state.thrustBudget || {};
-      const baseForwardCap = accelFromBudget(thrustBudget.forward_kN, mass);
-      const baseBackwardCap = accelFromBudget(thrustBudget.backward_kN ?? thrustBudget.forward_kN, mass);
-      const baseLateralCap = accelFromBudget(thrustBudget.lateral_kN, mass);
+      
+      // Вычисляем релятивистские параметры ДО расчета ускорений
       const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
-      const vOverC = Math.min(speed / c, 0.999999);
+      const vOverC = Math.min(speed / c, 0.999);
       const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
-      const gammaCubed = gamma * gamma * gamma;
-      const forwardCap = gammaCubed > 0 ? baseForwardCap / gammaCubed : 0;
-      const backwardCap = gammaCubed > 0 ? baseBackwardCap / gammaCubed : 0;
-      const lateralCap = gamma > 0 ? baseLateralCap / gamma : 0;
-      if (env) {
-        const relativistic = env.relativistic || {};
-        relativistic.gamma = gamma;
-        relativistic.v_over_c = vOverC;
-        relativistic.speed_mps = speed;
-        relativistic.c_mps = c;
-        env.relativistic = relativistic;
-        env.gamma = gamma;
-        env.v_over_c = vOverC;
-        env.speed_mps = speed;
-      }
+      
+      // РЕЛЯТИВИСТСКИЕ ускорения: продольное делится на γ³, поперечное на γ
+      const rawForwardCap = accelFromBudget(thrustBudget.forward_kN, mass);
+      const rawBackwardCap = accelFromBudget(thrustBudget.backward_kN ?? thrustBudget.forward_kN, mass);
+      const rawLateralCap = accelFromBudget(thrustBudget.lateral_kN, mass);
+      
+      const forwardCap = rawForwardCap / Math.pow(gamma, 3);
+      const backwardCap = rawBackwardCap / Math.pow(gamma, 3);
+      const lateralCap = rawLateralCap / gamma;
+
       const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
       const yawAccelCap = angularAccelFromBudget(thrustBudget.yaw_kNm, Izz);
 
@@ -82,7 +74,6 @@
       const thrustRight = lateralCap > 0 ? clamp(combinedLatAccel / lateralCap, -1, 1) : 0;
 
       let forwardAccelTarget = solveForwardAccel(throttleInput, forwardCap, backwardCap, handling);
-      // No artificial speed limiting - pure physics only
       const forwardJerk = applyJerk(prevForwardAccel, forwardAccelTarget, jerk.forward_mps3, dt);
       prevForwardAccel = forwardJerk.value;
       const forwardDivisor = forwardJerk.value >= 0 ? forwardCap : backwardCap;
@@ -93,13 +84,11 @@
       const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
       let torqueModifier = 1;
 
-      // If max angular velocity is 0, completely disable rotation
       if (maxAngularVelRps === 0) {
         torqueModifier = 0;
       } else if (currentAngularVel >= maxAngularVelRps * 0.95) {
         const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
         const turnDirection = turnInput >= 0 ? 1 : -1;
-        // Only allow torque that opposes current rotation
         if (turnDirection === velDirection && Math.abs(turnInput) > 0.1) {
           torqueModifier = 0;
         }
@@ -113,7 +102,6 @@
         handling
       );
       
-      // Limit angular acceleration by ship specifications
       const maxAngularAccelFromDps = maxAngularVelRps / 0.2;
       const limitedAngularAccel = clamp(rawAngularAccel, -maxAngularAccelFromDps, maxAngularAccelFromDps);
       const normalizedTorque = yawAccelCap > 0
@@ -121,7 +109,7 @@
         : clamp(limitedAngularAccel, -1, 1);
       const torque = clamp(normalizedTorque * torqueModifier, -1, 1);
 
-      // SR telemetry (§8 ТЗ v0.6.3)
+      // SR telemetry с релятивистскими эффективными ускорениями
       const a_fwd_eff = forwardJerk.value / Math.pow(gamma, 3);
       const a_lat_eff = combinedLatAccel / gamma;
 
@@ -135,7 +123,7 @@
           slip_deg: beta * RAD2DEG,
           slip_target_deg: betaTarget * RAD2DEG,
           profile: profileName || handling.profileName || "Balanced",
-          limiter_active: false,  // No artificial speed limiter
+          limiter_active: false,
           jerk_clamped_forward: forwardJerk.clamped,
           jerk_clamped_lateral: slipJerk.clamped,
           gamma: gamma,
@@ -168,7 +156,6 @@
       bias: clamp(raw.bias ?? 0, -1, 1),
       responsiveness: clamp(raw.responsiveness ?? 0.9, 0.1, 2.5),
       slip_target_max: clamp(raw.slip_target_max ?? raw.slip_limit_deg ?? 12, 2, 90),
-      // traction_control, traction_floor, traction_speed_ref REMOVED - no friction in space!
       cap_main_coupled: clamp(raw.cap_main_coupled ?? 0.7, 0.2, 1),
       lat_authority: clamp(raw.lat_authority ?? 0.85, 0.2, 1),
       turn_authority: clamp(raw.turn_authority ?? 0.7, 0, 2),
@@ -179,46 +166,38 @@
   }
 
   function sanitizeJerk(raw = {}, config = {}) {
-    // Calculate angular jerk from RCS characteristics if not provided
-    // Jerk = dτ/dt / I  (rate of change of torque divided by moment of inertia)
-    // For RCS thrusters, assume they can ramp up in ~0.1s (typical servo response)
     const mass_kg = (config.mass_t ?? 1) * 1000;
     const length_m = config.geometry?.length_m ?? 20;
     const Izz = config.inertia_opt?.Izz ?? (0.15 * mass_kg * length_m * length_m);
     const yaw_kNm = config.propulsion?.rcs?.yaw_kNm ?? 300;
     const torque_Nm = yaw_kNm * 1000;
     
-    // Torque ramp time (how fast RCS can change thrust)
-    const rampTime = 0.1; // 100ms typical for spacecraft RCS valves
+    const rampTime = 0.1;
     const defaultAngularJerk = (torque_Nm / rampTime) / Izz;
     
     return {
       forward_mps3: clamp(raw.forward_mps3 ?? 160, 10, 800),
       lateral_mps3: clamp(raw.lateral_mps3 ?? 120, 10, 600),
-      angular_rps3: clamp(raw.angular_rps3 ?? defaultAngularJerk, 0.1, 50)  // Physical RCS response
+      angular_rps3: clamp(raw.angular_rps3 ?? defaultAngularJerk, 0.1, 50)
     };
   }
 
-function solveSlipTarget(turnInput, strafeInput, speed, handling) {
-  const slipLimit = handling.slip_limit_deg * DEG2RAD;
-  const slipThreshold = handling.slip_threshold_deg * DEG2RAD;
-  const direction = turnInput !== 0 ? Math.sign(turnInput) : Math.sign(strafeInput || 1);
-  const turnComponent = handling.slip_target_max * DEG2RAD * handling.responsiveness * Math.abs(turnInput);
+  function solveSlipTarget(turnInput, strafeInput, speed, handling) {
+    const slipLimit = handling.slip_limit_deg * DEG2RAD;
+    const slipThreshold = handling.slip_threshold_deg * DEG2RAD;
+    const direction = turnInput !== 0 ? Math.sign(turnInput) : Math.sign(strafeInput || 1);
+    const turnComponent = handling.slip_target_max * DEG2RAD * handling.responsiveness * Math.abs(turnInput);
 
-  let betaTarget = direction * turnComponent;
-  betaTarget += (handling.bias ?? 0) * slipLimit;
-  betaTarget = clamp(betaTarget, -slipLimit, slipLimit);
+    let betaTarget = direction * turnComponent;
+    betaTarget += (handling.bias ?? 0) * slipLimit;
+    betaTarget = clamp(betaTarget, -slipLimit, slipLimit);
 
-  // Pure physics - no artificial "traction control" (no friction in space!)
-  // Speed does not affect slip angle
-
-  // Smooth out small inputs to prevent jitter (physical servo behavior)
-  if (Math.abs(betaTarget) < slipThreshold && slipThreshold > 0) {
-    const ratio = Math.abs(betaTarget) / slipThreshold;
-    betaTarget *= 0.5 + 0.5 * ratio;
+    if (Math.abs(betaTarget) < slipThreshold && slipThreshold > 0) {
+      const ratio = Math.abs(betaTarget) / slipThreshold;
+      betaTarget *= 0.5 + 0.5 * ratio;
+    }
+    return betaTarget;
   }
-  return betaTarget;
-}
 
   function computeSlipCorrection(slipError, handling, lateralCap) {
     if (!lateralCap) {
@@ -239,22 +218,16 @@ function solveSlipTarget(turnInput, strafeInput, speed, handling) {
     return clamp(throttleInput * backwardCap, -cap, cap);
   }
 
-  // REMOVED: applySpeedLimiter - artificial arcade limiter
-  // Speed is now limited only by physics (thrust and mass)
-
   function solveYawCommand(turnInput, slipError, angularVelocity, yawAccelCap, handling) {
     const cap = yawAccelCap > 0 ? yawAccelCap : 1;
     const turnAuthority = handling.turn_authority ?? handling.stab_gain ?? 1;
     const anticipationGain = handling.anticipation_gain ?? 0;
     const bias = handling.bias ?? 0;
 
-    // Manual control term - scales normalized input to available angular acceleration
     const manualTerm = turnAuthority * turnInput * cap;
-    // Damping and anticipation derived from angular rate (already rad/s)
     const damping = -handling.stab_damping * angularVelocity;
     const leadTerm = Math.abs(turnInput) > 0.05 ? anticipationGain * angularVelocity : 0;
 
-    // Bias and nose alignment operate as fractions of available authority
     const biasTerm = Math.abs(turnInput) > 0.05 ? bias * 0.1 * cap * Math.sign(turnInput) : 0;
     const alignGain = handling.nose_align_gain ?? 0;
     const alignScale = Math.abs(turnInput) < 0.2 ? 1 : 0.3;
@@ -289,20 +262,20 @@ function solveSlipTarget(turnInput, strafeInput, speed, handling) {
     return torque / Izz;
   }
 
-function applyJerk(prev, target, jerkLimit, dt) {
-  if (!jerkLimit || dt <= 0) {
+  function applyJerk(prev, target, jerkLimit, dt) {
+    if (!jerkLimit || dt <= 0) {
+      return { value: target, clamped: false };
+    }
+    const delta = target - prev;
+    const maxDelta = jerkLimit * dt;
+    if (delta > maxDelta) {
+      return { value: prev + maxDelta, clamped: true };
+    }
+    if (delta < -maxDelta) {
+      return { value: prev - maxDelta, clamped: true };
+    }
     return { value: target, clamped: false };
   }
-  const delta = target - prev;
-  const maxDelta = jerkLimit * dt;
-  if (delta > maxDelta) {
-    return { value: prev + maxDelta, clamped: true };
-  }
-  if (delta < -maxDelta) {
-    return { value: prev - maxDelta, clamped: true };
-  }
-  return { value: target, clamped: false };
-}
 
   function clamp(value, min, max) {
     if (value < min) {
