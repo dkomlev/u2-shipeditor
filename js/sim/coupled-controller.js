@@ -88,13 +88,21 @@
         }
       }
 
-      const rawTorque = solveYawCommand(turnInput, slipError, state.angularVelocity ?? 0, yawAccelCap, handling);
+      const rawAngularAccel = solveYawCommand(
+        turnInput,
+        slipError,
+        state.angularVelocity ?? 0,
+        yawAccelCap,
+        handling
+      );
       
-      // Limit torque by angular velocity specifications
-      const maxTorqueFromDps = yawAccelCap > 0 ? (maxAngularVelRps / 0.2) / yawAccelCap : 1;
-      const limitedRawTorque = clamp(rawTorque, -maxTorqueFromDps, maxTorqueFromDps);
-      
-      const torque = limitedRawTorque * torqueModifier;
+      // Limit angular acceleration by ship specifications
+      const maxAngularAccelFromDps = maxAngularVelRps / 0.2;
+      const limitedAngularAccel = clamp(rawAngularAccel, -maxAngularAccelFromDps, maxAngularAccelFromDps);
+      const normalizedTorque = yawAccelCap > 0
+        ? clamp(limitedAngularAccel / yawAccelCap, -1, 1)
+        : clamp(limitedAngularAccel, -1, 1);
+      const torque = clamp(normalizedTorque * torqueModifier, -1, 1);
 
       // SR telemetry (§8 ТЗ v0.6.3)
       const vOverC = Math.min(speed / c, 0.999);
@@ -219,31 +227,27 @@ function solveSlipTarget(turnInput, strafeInput, speed, handling) {
   // REMOVED: applySpeedLimiter - artificial arcade limiter
   // Speed is now limited only by physics (thrust and mass)
 
-function solveYawCommand(turnInput, slipError, angularVelocity, yawAccelCap, handling) {
-  // Only apply damping when there's angular velocity
-  const damping = -handling.stab_damping * angularVelocity;
+  function solveYawCommand(turnInput, slipError, angularVelocity, yawAccelCap, handling) {
+    const cap = yawAccelCap > 0 ? yawAccelCap : 1;
+    const turnAuthority = handling.turn_authority ?? handling.stab_gain ?? 1;
+    const anticipationGain = handling.anticipation_gain ?? 0;
+    const bias = handling.bias ?? 0;
+
+    // Manual control term - scales normalized input to available angular acceleration
+    const manualTerm = turnAuthority * turnInput * cap;
+    // Damping and anticipation derived from angular rate (already rad/s)
+    const damping = -handling.stab_damping * angularVelocity;
+    const leadTerm = Math.abs(turnInput) > 0.05 ? anticipationGain * angularVelocity : 0;
+
+    // Bias and nose alignment operate as fractions of available authority
+    const biasTerm = Math.abs(turnInput) > 0.05 ? bias * 0.1 * cap * Math.sign(turnInput) : 0;
+    const alignGain = handling.nose_align_gain ?? 0;
+    const alignScale = Math.abs(turnInput) < 0.2 ? 1 : 0.3;
+    const alignTerm = Math.abs(turnInput) > 0.05 ? alignGain * alignScale * slipError * cap : 0;
   
-  // Manual control term - main command from pilot
-  const manualTerm = (handling.turn_authority ?? handling.stab_gain ?? 1) * turnInput;
-  
-  // Anticipation term - only when turning
-  const leadTerm = Math.abs(turnInput) > 0.05 ? handling.anticipation_gain * angularVelocity : 0;
-  
-  // Bias term - only apply when actively turning
-  const biasTerm = Math.abs(turnInput) > 0.05 ? handling.bias * 0.1 * Math.sign(turnInput) : 0;
-  
-  // Nose alignment - only when actively turning
-  const alignGain = handling.nose_align_gain ?? 0;
-  const alignScale = Math.abs(turnInput) < 0.2 ? 1 : 0.3;
-  const alignTerm = Math.abs(turnInput) > 0.05 ? alignGain * alignScale * slipError : 0;
-  
-  const alphaCmd = manualTerm + damping + leadTerm + biasTerm + alignTerm;
-  
-  if (yawAccelCap <= 0) {
-    return clamp(alphaCmd, -1, 1);
+    const alphaCmd = manualTerm + damping + leadTerm + biasTerm + alignTerm;
+    return clamp(alphaCmd, -cap, cap);
   }
-  return clamp(alphaCmd / yawAccelCap, -1, 1);
-}
 
   function calcSlip(state) {
     const vel = state.velocity || { x: 0, y: 0 };

@@ -161,16 +161,6 @@
       }
     }
     
-    // Pure physics - no artificial limits
-    // Angular velocity is limited only by ship's physical capabilities (RCS thrust and inertia)
-    const angularDps = state.angular_dps;
-    if (angularDps && typeof angularDps.yaw === 'number') {
-      const maxYawRps = (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180;
-      if (maxYawRps === 0) {
-        newAngularVelocity = 0;
-      }
-    }
-
     const nextPosition = {
       x: state.position.x + vx * dt,
       y: state.position.y + vy * dt

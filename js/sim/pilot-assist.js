@@ -51,7 +51,7 @@
           mode: "Brake",
           autopilot: false,
           brake: true,
-          telemetry: buildTelemetry(state, summary.assist)
+          telemetry: buildTelemetry(state, summary.assist, env)
         };
       }
 
@@ -104,36 +104,30 @@
         const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
         const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
 
-        // Calculate desired angular acceleration from input
-        let desiredAngularAccel = command.torque; // torque is already normalized -1..1
+        // Convert normalized torque into physical angular acceleration request
+        let desiredAngularAccel = maxAngularAccel > 0 ? command.torque * maxAngularAccel : 0;
 
         // Limit angular acceleration by angular velocity limits (degrees per second)
         const maxAngularAccelFromDps = maxAngularVelRps / 0.2; // time_constant = 0.2s for smooth limiting
         desiredAngularAccel = clamp(desiredAngularAccel, -maxAngularAccelFromDps, maxAngularAccelFromDps);
 
-        // Removed damping to rely on ship TTX limits only
-
         // If max angular velocity is 0, completely disable rotation
-        if (maxAngularVelRps === 0) {
+        if (maxAngularVelRps === 0 || maxAngularAccel <= 0) {
           desiredAngularAccel = 0;
         } else if (currentAngularVel >= maxAngularVelRps * 0.95) {
           const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
           const accelDirection = desiredAngularAccel >= 0 ? 1 : -1;
           // Only allow acceleration that opposes current rotation
-          if (accelDirection === velDirection && Math.abs(desiredAngularAccel) > 0.1) {
+          if (accelDirection === velDirection && Math.abs(desiredAngularAccel) > 0.1 * maxAngularAccel) {
             desiredAngularAccel = 0;
           }
         }
 
-        // Limit by available thrust budget
-        command.torque = maxAngularAccel > 0 ? clamp(desiredAngularAccel, -maxAngularAccel, maxAngularAccel) / maxAngularAccel : 0;
-
-        // Decoupled: apply angular jerk limiting for smooth rotation ramp
+        // Decoupled: apply angular jerk limiting for smooth rotation ramp (physical units)
         const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 2.0;
-        const targetAngularAccel = command.torque;  // Normalized -1..1
-        const jerkResult = applyAngularJerk(prevAngularAccel, targetAngularAccel, angularJerkLimit, dt);
+        const jerkResult = applyAngularJerk(prevAngularAccel, desiredAngularAccel, angularJerkLimit, dt);
         prevAngularAccel = jerkResult.value;
-        command.torque = jerkResult.value;
+        command.torque = maxAngularAccel > 0 ? clamp(jerkResult.value / maxAngularAccel, -1, 1) : 0;
       }
 
       command.thrustForward = clamp(command.thrustForward + randomVec.y, -1, 1);
@@ -145,7 +139,7 @@
         mode: modeCoupled ? "Coupled" : "Decoupled",
         autopilot,
         brake: false,
-        telemetry: telemetry || buildTelemetry(state, summary.assist)
+        telemetry: telemetry || buildTelemetry(state, summary.assist, env)
       };
     }
 
@@ -259,10 +253,10 @@
     return Math.min(Math.max(value, min), max);
   }
 
-  function buildTelemetry(state, assist = {}) {
+  function buildTelemetry(state, assist = {}, env = {}) {
     const beta = calcSlip(state) * (180 / Math.PI);
     const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
-    const c = 10000; // fallback, ideally from env
+    const c = env.c_mps ?? 10000;
     const vOverC = Math.min(speed / c, 0.999);
     const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
     
