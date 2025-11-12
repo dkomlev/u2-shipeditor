@@ -1,4 +1,4 @@
-# U2 Ship Editor - Architecture Documentation
+# U2 Ship Editor - Architecture Documentation v0.6.4
 
 ## Overview
 

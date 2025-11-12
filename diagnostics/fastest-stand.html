@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>U2 Diagnostics · Fastest Ship SR Stand v0.7.1 (build 006)</title>
+  <style>
+    body { font-family: Inter, -apple-system, Segoe UI, sans-serif; margin: 0; background: #0b1020; color: #e6eef7; }
+    .wrap { padding: 16px; max-width: 1200px; margin: 0 auto; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { background: rgba(10,14,28,0.9); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; }
+    h1 { margin: 8px 0 4px; font-size: 22px; }
+    h2 { margin: 6px 0 8px; font-size: 16px; color: #a9d1ff; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kv { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 13px; }
+    .ok { color: #4ade80; }
+    .warn { color: #fbbf24; }
+    .bad { color: #ef4444; }
+    button { background: #1f2c50; border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input, select { background: #0c1430; border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 6px 8px; border-radius: 6px; }
+    canvas { width: 100%; height: 300px; background: #0a0f22; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Diagnostics: Fastest Ship SR Stand <span class="muted">v0.7.1 build 006</span></h1>
+    <p class="muted">Цель: симулировать самый быстрый корабль на полном тяговом режиме и записать v(t), v/c, γ(t), оценить время достижения 0.5c/0.9c/0.99c с учётом релятивистской динамики.</p>
+
+    <div class="row">
+      <div class="card">
+        <h2>Параметры запуска</h2>
+        <div class="grid2" style="margin-bottom:8px;">
+          <label>Длительность (сек)
+            <input id="duration" type="number" value="1800" min="1" step="1" />
+          </label>
+          <label>Сэмплинг (каждый N шагов)
+            <input id="sampleEvery" type="number" value="10" min="1" step="1" />
+          </label>
+          <label>Тяга вперёд
+            <select id="thrust">
+              <option value="1">100%</option>
+              <option value="0.5">50%</option>
+              <option value="0.25">25%</option>
+            </select>
+          </label>
+          <label>Торк (норм.)
+            <select id="torque">
+              <option value="0">0</option>
+              <option value="0.1">0.1</option>
+              <option value="0.5">0.5</option>
+            </select>
+          </label>
+          <fieldset style="grid-column: 1 / -1; border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px;">
+            <legend class="muted">ТТХ (редактируемо, по умолчанию M50)</legend>
+            <div class="grid2">
+              <label>mass_t (тонн)
+                <input id="mass_t" type="number" value="12" step="0.1" />
+              </label>
+              <label>geometry.length_m
+                <input id="geomL" type="number" value="11" step="0.1" />
+              </label>
+              <label>geometry.width_m
+                <input id="geomW" type="number" value="8" step="0.1" />
+              </label>
+              <label>main_drive.max_thrust_kN
+                <input id="thrustMainInput" type="number" value="1200" step="1" />
+              </label>
+              <label>rcs.lateral_kN
+                <input id="rcsLat" type="number" value="800" step="1" />
+              </label>
+              <label>rcs.backward_kN
+                <input id="rcsBack" type="number" value="800" step="1" />
+              </label>
+              <label>rcs.yaw_kNm
+                <input id="rcsYaw" type="number" value="500" step="1" />
+              </label>
+            </div>
+          </fieldset>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="runBtn">Запустить</button>
+          <button id="stopBtn" disabled>Остановить</button>
+          <span id="status" class="muted"></span>
+        </div>
+        <div style="margin-top:10px;" class="grid2">
+          <div class="kv">Корабль <span id="shipName" class="mono">—</span></div>
+          <div class="kv">m (т) <span id="mass" class="mono">—</span></div>
+          <div class="kv">Thrust main (kN) <span id="thrustMain" class="mono">—</span></div>
+          <div class="kv">c (м/с) <span id="cVal" class="mono">—</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Метрики</h2>
+        <div class="grid2">
+          <div class="kv">t@0.5c <span id="t05c" class="mono">—</span></div>
+          <div class="kv">t@0.9c <span id="t09c" class="mono">—</span></div>
+          <div class="kv">t@0.99c <span id="t099c" class="mono">—</span></div>
+          <div class="kv">Vmax (v/c) <span id="vmax" class="mono">—</span></div>
+          <div class="kv">γ max <span id="gmax" class="mono">—</span></div>
+          <div class="kv">Шагов <span id="steps" class="mono">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <div class="card">
+        <h2>v(t) и v/c(t)</h2>
+        <canvas id="chartSpeed"></canvas>
+      </div>
+      <div class="card">
+        <h2>γ(t)</h2>
+        <canvas id="chartGamma"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/lib/app-config-loader.js"></script>
+  <script src="../js/sim/core.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const app = { running: false, series: null, ctxSpeed: null, ctxGamma: null };
+    const shipCache = new Map(); // not used in manual mode
+
+    function drawLine(ctx, xs, ys, color) {
+      if (!xs.length) return;
+      const W = ctx.canvas.width, H = ctx.canvas.height;
+      ctx.clearRect(0,0,W,H);
+      const minX = 0, maxX = xs[xs.length-1] || 1;
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const pad = 8;
+      const sx = (x) => pad + (W-2*pad) * (x-minX) / (maxX-minX || 1);
+      const sy = (y) => H-pad - (H-2*pad) * (y-minY) / (maxY-minY || 1);
+      ctx.strokeStyle = '#32406a'; ctx.lineWidth = 1; ctx.beginPath();
+      ctx.moveTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, H-pad); ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
+      ctx.moveTo(sx(xs[0]), sy(ys[0]));
+      for (let i=1;i<xs.length;i++) ctx.lineTo(sx(xs[i]), sy(ys[i]));
+      ctx.stroke();
+    }
+
+    // Ship selection disabled; using manual TTX inputs
+
+    function updateSelectionInfo(path) { /* no-op in manual mode */ }
+
+    function gammaFromV(v, c) { const b = Math.min(Math.max(v/c,0),0.999999); return 1/Math.sqrt(1-b*b); }
+
+    async function run() {
+      app.running = true; $('runBtn').disabled = true; $('stopBtn').disabled = false; $('status').textContent = 'Загрузка...';
+      let c = 1000, dt = 1/60;
+      try {
+        const appCfg = await U2AppConfigLoader.loadAppConfig();
+        c = appCfg.physics?.c_mps ?? c;
+        dt = appCfg.physics?.dt_sec ?? dt;
+      } catch (e) {
+        $('status').textContent = 'Загрузка AppConfig не удалась — используем c=1000, dt=1/60';
+      }
+      // Manual TTX from inputs (defaults ~M50)
+      const mass_t = Number($('mass_t').value || 12);
+      const geomL = Number($('geomL').value || 11);
+      const geomW = Number($('geomW').value || 8);
+      const thrustMain = Number($('thrustMainInput').value || 1200);
+      const rcsLat = Number($('rcsLat').value || 800);
+      const rcsBack = Number($('rcsBack').value || 800);
+      const rcsYaw = Number($('rcsYaw').value || 500);
+
+      const shipJson = {
+        meta: { name: 'Origin M50 Interceptor (manual)' },
+        mass: { dry_t: mass_t },
+        geometry: { length_m: geomL, width_m: geomW },
+        propulsion: {
+          main_drive: { max_thrust_kN: thrustMain, sustained_thrust_kN: thrustMain*0.75, max_power_MW: 20 },
+          rcs: { forward_kN: rcsLat, backward_kN: rcsBack, lateral_kN: rcsLat, vertical_kN: rcsLat, yaw_kNm: rcsYaw, pitch_kNm: rcsYaw, roll_kNm: rcsYaw }
+        },
+        performance: { angular_dps: { pitch: 70, yaw: 52, roll: 195 } }
+      };
+      $('shipName').textContent = shipJson.meta.name;
+      $('mass').textContent = String(mass_t);
+      $('thrustMain').textContent = String(thrustMain);
+      $('cVal').textContent = String(c);
+
+      const core = U2SimCore;
+      let state = core.createState({ mass_t: mass_t, geometry: shipJson.geometry, propulsion: shipJson.propulsion, performance: shipJson.performance });
+
+      const duration = Number($('duration').value || 1800);
+      const samples = Number($('sampleEvery').value || 10);
+      const thrustNorm = Number($('thrust').value || 1);
+      const torqueNorm = Number($('torque').value || 0);
+
+      const times = [], speeds = [], vOverCs = [], gammas = [];
+      let t05=null, t09=null, t099=null, vmax=0, gmax=0, steps=0;
+
+      $('status').textContent = 'Симуляция...';
+      for (let t=0; t<duration && app.running; t+=dt) {
+        const cmd = { thrustForward: thrustNorm, thrustRight: 0, torque: torqueNorm };
+        const next = core.step(state, cmd, { dt_sec: dt, c_mps: c, inertia: 1 });
+        state = next; steps++;
+        if (steps % samples === 0) {
+          const v = Math.hypot(state.velocity.x, state.velocity.y);
+          const vc = v / c; const g = gammaFromV(v, c);
+          times.push(t); speeds.push(v); vOverCs.push(vc); gammas.push(g);
+          if (!t05 && vc>=0.5) t05 = t.toFixed(1);
+          if (!t09 && vc>=0.9) t09 = t.toFixed(1);
+          if (!t099 && vc>=0.99) t099 = t.toFixed(1);
+          if (vc>vmax) vmax = vc; if (g>gmax) gmax = g;
+        }
+      }
+
+      $('t05c').textContent = t05 ?? '—';
+      $('t09c').textContent = t09 ?? '—';
+      $('t099c').textContent = t099 ?? '—';
+      $('vmax').textContent = vmax.toFixed(6);
+      $('gmax').textContent = gmax.toFixed(3);
+      $('steps').textContent = String(steps);
+
+      drawLine(app.ctxSpeed, times, vOverCs, '#5dd8ff');
+      drawLine(app.ctxGamma, times, gammas, '#a78bfa');
+      $('status').textContent = 'Готово'; $('runBtn').disabled = false; $('stopBtn').disabled = true; app.running = false;
+    }
+
+    function stop() { app.running = false; $('stopBtn').disabled = true; $('status').textContent = 'Остановка...'; }
+
+    window.addEventListener('load', () => {
+      app.ctxSpeed = $('chartSpeed').getContext('2d');
+      app.ctxGamma = $('chartGamma').getContext('2d');
+      $('runBtn').addEventListener('click', run);
+      $('stopBtn').addEventListener('click', stop);
+      // manual mode: no ship list
+    });
+  </script>
+</body>
+</html>

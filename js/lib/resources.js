@@ -14,6 +14,26 @@
     data: null,
     promise: null
   };
+
+  async function fetchWithFallback(path) {
+    const candidates = [
+      path,
+      (typeof location !== 'undefined' ? new URL(path, location.href).pathname.replace(/[^/]+\/[.]{0}/,'') : null),
+      `../${path}`,
+      `../../${path}`,
+      `/${path}`
+    ].filter(Boolean);
+    let lastErr = null;
+    for (const url of candidates) {
+      try {
+        const resp = await fetch(url, { cache: "no-store" });
+        if (resp && resp.ok) return resp;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error(`Не удалось загрузить ${path}`);
+  }
   const shipCache = new Map();
 
   async function loadManifest() {
@@ -21,13 +41,8 @@
       return manifestState.data;
     }
     if (!manifestState.promise) {
-      manifestState.promise = fetch(MANIFEST_PATH, { cache: "no-store" })
-        .then((resp) => {
-          if (!resp.ok) {
-            throw new Error(`Не удалось загрузить manifest: ${resp.status}`);
-          }
-          return resp.json();
-        })
+      manifestState.promise = fetchWithFallback(MANIFEST_PATH)
+        .then((resp) => resp.json())
         .then((list) => {
           manifestState.data = Array.isArray(list) ? list.map(normalizeEntry) : [];
           return manifestState.data;
@@ -94,9 +109,14 @@
     if (shipCache.has(path)) {
       return shipCache.get(path);
     }
-    const response = await fetch(path, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`Не удалось загрузить ${path}: ${response.status}`);
+    const response = await (async () => {
+      try { return await fetch(path, { cache: "no-store" }); } catch (_) {}
+      try { return await fetch(`../${path}`, { cache: "no-store" }); } catch (_) {}
+      try { return await fetch(`../../${path}`, { cache: "no-store" }); } catch (_) {}
+      try { return await fetch(`/${path}`, { cache: "no-store" }); } catch (e) { throw e; }
+    })();
+    if (!response || !response.ok) {
+      throw new Error(`Не удалось загрузить ${path}: ${response ? response.status : 'fetch failed'}`);
     }
     const json = await response.json();
     shipCache.set(path, json);

@@ -12,8 +12,7 @@
 
   function createCoupledController(options = {}) {
     let handling = sanitizeHandling(options.handling || {}, options.profileName);
-    let jerk = sanitizeJerk(options.jerk || {});
-    let limiterRatio = clamp(options.speedLimiterRatio ?? 0.85, 0.2, 1);
+    let jerk = sanitizeJerk(options.jerk || {}, options.config || {});
     let profileName = handling.profileName || options.profileName || "Balanced";
     let angularDps = options.angular_dps || null;
     let prevForwardAccel = 0;
@@ -24,11 +23,9 @@
         handling = sanitizeHandling(next.handling, next.profileName || handling.profileName);
       }
       if (next.jerk) {
-        jerk = sanitizeJerk(next.jerk);
+        jerk = sanitizeJerk(next.jerk, next.config || options.config || {});
       }
-      if (typeof next.speedLimiterRatio === "number") {
-        limiterRatio = clamp(next.speedLimiterRatio, 0.2, 1);
-      }
+      // speedLimiterRatio removed - no artificial limits
       if (next.profileName) {
         profileName = next.profileName;
       }
@@ -47,7 +44,8 @@
       const forwardCap = accelFromBudget(thrustBudget.forward_kN, mass);
       const backwardCap = accelFromBudget(thrustBudget.backward_kN ?? thrustBudget.forward_kN, mass);
       const lateralCap = accelFromBudget(thrustBudget.lateral_kN, mass);
-      const yawAccelCap = angularAccelFromBudget(thrustBudget.yaw_kNm, mass, env.inertia ?? 1);
+      const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
+      const yawAccelCap = angularAccelFromBudget(thrustBudget.yaw_kNm, Izz);
 
       const beta = calcSlip(state);
       const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
@@ -67,7 +65,7 @@
       const thrustRight = lateralCap > 0 ? clamp(combinedLatAccel / lateralCap, -1, 1) : 0;
 
       let forwardAccelTarget = solveForwardAccel(throttleInput, forwardCap, backwardCap, handling);
-      forwardAccelTarget = applySpeedLimiter(forwardAccelTarget, speed, vmaxRuntime, c, limiterRatio);
+      // No artificial speed limiting - pure physics only
       const forwardJerk = applyJerk(prevForwardAccel, forwardAccelTarget, jerk.forward_mps3, dt);
       prevForwardAccel = forwardJerk.value;
       const forwardDivisor = forwardJerk.value >= 0 ? forwardCap : backwardCap;
@@ -114,7 +112,7 @@
           slip_deg: beta * RAD2DEG,
           slip_target_deg: betaTarget * RAD2DEG,
           profile: profileName || handling.profileName || "Balanced",
-          limiter_active: speed > Math.min(vmaxRuntime, c) * limiterRatio,
+          limiter_active: false,  // No artificial speed limiter
           jerk_clamped_forward: forwardJerk.clamped,
           jerk_clamped_lateral: slipJerk.clamped,
           gamma: gamma,
@@ -147,23 +145,34 @@
       bias: clamp(raw.bias ?? 0, -1, 1),
       responsiveness: clamp(raw.responsiveness ?? 0.9, 0.1, 2.5),
       slip_target_max: clamp(raw.slip_target_max ?? raw.slip_limit_deg ?? 12, 2, 90),
-      traction_control: clamp(raw.traction_control ?? 0.4, 0, 1),
+      // traction_control, traction_floor, traction_speed_ref REMOVED - no friction in space!
       cap_main_coupled: clamp(raw.cap_main_coupled ?? 0.7, 0.2, 1),
       lat_authority: clamp(raw.lat_authority ?? 0.85, 0.2, 1),
       turn_authority: clamp(raw.turn_authority ?? 0.7, 0, 2),
       turn_assist: clamp(raw.turn_assist ?? 0.3, 0, 1),
-      traction_floor: clamp(raw.traction_floor ?? 0.25, 0, 1),
-      traction_speed_ref: clamp(raw.traction_speed_ref ?? 320, 50, 1200),
       strafe_to_slip_gain: clamp(raw.strafe_to_slip_gain ?? 0.3, 0, 2),
       nose_align_gain: clamp(raw.nose_align_gain ?? 0.1, 0, 1)
     };
   }
 
-  function sanitizeJerk(raw = {}) {
+  function sanitizeJerk(raw = {}, config = {}) {
+    // Calculate angular jerk from RCS characteristics if not provided
+    // Jerk = dτ/dt / I  (rate of change of torque divided by moment of inertia)
+    // For RCS thrusters, assume they can ramp up in ~0.1s (typical servo response)
+    const mass_kg = (config.mass_t ?? 1) * 1000;
+    const length_m = config.geometry?.length_m ?? 20;
+    const Izz = config.inertia_opt?.Izz ?? (0.15 * mass_kg * length_m * length_m);
+    const yaw_kNm = config.propulsion?.rcs?.yaw_kNm ?? 300;
+    const torque_Nm = yaw_kNm * 1000;
+    
+    // Torque ramp time (how fast RCS can change thrust)
+    const rampTime = 0.1; // 100ms typical for spacecraft RCS valves
+    const defaultAngularJerk = (torque_Nm / rampTime) / Izz;
+    
     return {
       forward_mps3: clamp(raw.forward_mps3 ?? 160, 10, 800),
       lateral_mps3: clamp(raw.lateral_mps3 ?? 120, 10, 600),
-      angular_rps3: clamp(raw.angular_rps3 ?? 0.5, 0.1, 5)  // Elite Dangerous style: smooth 3-4s ramp
+      angular_rps3: clamp(raw.angular_rps3 ?? defaultAngularJerk, 0.1, 50)  // Physical RCS response
     };
   }
 
@@ -172,20 +181,15 @@ function solveSlipTarget(turnInput, strafeInput, speed, handling) {
   const slipThreshold = handling.slip_threshold_deg * DEG2RAD;
   const direction = turnInput !== 0 ? Math.sign(turnInput) : Math.sign(strafeInput || 1);
   const turnComponent = handling.slip_target_max * DEG2RAD * handling.responsiveness * Math.abs(turnInput);
-  // Removed strafeComponent to prevent strafe from causing nose rotation
 
   let betaTarget = direction * turnComponent;
   betaTarget += (handling.bias ?? 0) * slipLimit;
   betaTarget = clamp(betaTarget, -slipLimit, slipLimit);
 
-  const tractionRef = handling.traction_speed_ref || 320;
-  const tractionFloor = handling.traction_floor ?? 0.25;
-  const tractionFactor = Math.max(
-    tractionFloor,
-    1 - handling.traction_control * Math.min(speed / tractionRef, 1)
-  );
-  betaTarget *= tractionFactor;
+  // Pure physics - no artificial "traction control" (no friction in space!)
+  // Speed does not affect slip angle
 
+  // Smooth out small inputs to prevent jitter (physical servo behavior)
   if (Math.abs(betaTarget) < slipThreshold && slipThreshold > 0) {
     const ratio = Math.abs(betaTarget) / slipThreshold;
     betaTarget *= 0.5 + 0.5 * ratio;
@@ -212,27 +216,29 @@ function solveSlipTarget(turnInput, strafeInput, speed, handling) {
     return clamp(throttleInput * backwardCap, -cap, cap);
   }
 
-  function applySpeedLimiter(accel, speed, vmaxRuntime, c, ratio) {
-    const limit = Math.min(vmaxRuntime, c) * ratio;
-    if (limit <= 0) {
-      return accel;
-    }
-    if (speed <= limit || accel <= 0) {
-      return accel;
-    }
-    const over = clamp((speed - limit) / Math.max(limit * 0.25, 1), 0, 1);
-    return accel * (1 - over);
-  }
+  // REMOVED: applySpeedLimiter - artificial arcade limiter
+  // Speed is now limited only by physics (thrust and mass)
 
 function solveYawCommand(turnInput, slipError, angularVelocity, yawAccelCap, handling) {
-  const leadTerm = handling.anticipation_gain * angularVelocity;
-  const manualTerm = (handling.turn_authority ?? handling.stab_gain ?? 1) * turnInput;
+  // Only apply damping when there's angular velocity
   const damping = -handling.stab_damping * angularVelocity;
-  const biasTerm = handling.bias * 0.1;
+  
+  // Manual control term - main command from pilot
+  const manualTerm = (handling.turn_authority ?? handling.stab_gain ?? 1) * turnInput;
+  
+  // Anticipation term - only when turning
+  const leadTerm = Math.abs(turnInput) > 0.05 ? handling.anticipation_gain * angularVelocity : 0;
+  
+  // Bias term - only apply when actively turning
+  const biasTerm = Math.abs(turnInput) > 0.05 ? handling.bias * 0.1 * Math.sign(turnInput) : 0;
+  
+  // Nose alignment - only when actively turning
   const alignGain = handling.nose_align_gain ?? 0;
   const alignScale = Math.abs(turnInput) < 0.2 ? 1 : 0.3;
-  const alignTerm = alignGain * alignScale * slipError;
-  const alphaCmd = leadTerm + manualTerm + damping + biasTerm + alignTerm;
+  const alignTerm = Math.abs(turnInput) > 0.05 ? alignGain * alignScale * slipError : 0;
+  
+  const alphaCmd = manualTerm + damping + leadTerm + biasTerm + alignTerm;
+  
   if (yawAccelCap <= 0) {
     return clamp(alphaCmd, -1, 1);
   }
@@ -256,16 +262,12 @@ function solveYawCommand(turnInput, slipError, angularVelocity, yawAccelCap, han
     return (thrust_kN * 1000) / mass_kg;
   }
 
-  function angularAccelFromBudget(yaw_kNm = 0, mass_kg = 1, inertia = 1) {
-    if (!yaw_kNm) {
+  function angularAccelFromBudget(yaw_kNm = 0, Izz = 1) {
+    if (!yaw_kNm || !Izz) {
       return 0;
     }
     const torque = yaw_kNm * 1000;
-    const moment = Math.max(inertia, 0.05) * mass_kg;
-    if (!moment) {
-      return 0;
-    }
-    return torque / moment;
+    return torque / Izz;
   }
 
 function applyJerk(prev, target, jerkLimit, dt) {

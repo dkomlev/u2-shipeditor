@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>U2 FlightTest v0.6.4</title>
+  <title>U2 FlightTest v0.7.1</title>
   <style>
     * {
       margin: 0;
@@ -125,7 +125,7 @@
 <body>
   <div id="loading">
     <div class="spinner"></div>
-    <span>Loading FlightTest v0.6.4...</span>
+    <span>Loading FlightTest v0.7.2 (build 001)...</span>
   </div>
 
   <canvas id="gameCanvas"></canvas>
@@ -163,8 +163,10 @@
   <script src="js/sim/collision.js"></script>
   <script>
     (async function () {
+      const APP_VERSION = "0.7.2";
+      const BUILD_NUMBER = "001";
       try {
-        console.log("FlightTest: Starting initialization...");
+        console.log(`FlightTest v${APP_VERSION} (build ${BUILD_NUMBER}): Starting initialization...`);
       
         const appConfigLoader = window.U2AppConfigLoader;
         const resources = window.U2Resources;
@@ -499,7 +501,8 @@
           Asteroids: ${asteroids.length} / ${config.asteroids.count}<br>
           Collisions: <span class="${collisionClass}">${collisionMode}${collisions.length > 0 ? ` (${collisions.length})` : ''}</span><br>
           Overlay: ${collisionOverlay ? "ON (F3)" : "OFF (F3)"}<br>
-          World: ${(config.world.bounds.width / 1000).toFixed(0)} × ${(config.world.bounds.height / 1000).toFixed(0)} km
+          World: ${(config.world.bounds.width / 1000).toFixed(0)} × ${(config.world.bounds.height / 1000).toFixed(0)} km<br>
+          <span style="opacity: 0.6; font-size: 11px;">v${APP_VERSION} build ${BUILD_NUMBER}</span>
         `;
       }
       

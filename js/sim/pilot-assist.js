@@ -19,7 +19,7 @@
       ? CoupledController.createCoupledController({
           handling: summary.assist?.handling,
           jerk: summary.assist?.jerk,
-          speedLimiterRatio: summary.assist?.speed_limiter_ratio,
+          config: summary,  // Pass full ship summary for physical calculations
           profileName: summary.assist?.handling_style,
           angular_dps: summary.performance?.angular_dps || summary.angular_dps
         })
@@ -96,8 +96,8 @@
         const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
         const thrustBudget = state.thrustBudget || {};
         const yawTorqueNm = Math.max(thrustBudget.yaw_kNm ?? 0, 0) * 1000;
-        const moment = Math.max(env.inertia ?? 1, 0.1) * mass;
-        const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0;
+        const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
+        const maxAngularAccel = yawTorqueNm > 0 && Izz > 0 ? yawTorqueNm / Izz : 0;
 
         // Limit angular velocity to ship specifications
         const angularDps = summary.performance?.angular_dps || summary.angular_dps;
@@ -172,7 +172,7 @@
     const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0.1;
     const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
     // Stop time should be enough to decelerate from current velocity with available torque
-    const calculatedRotStop = currentAngularVel > 0 ? currentAngularVel / maxAngularAccel : 0.15;
+    const calculatedRotStop = currentAngularVel > 0 && maxAngularAccel > 0 ? currentAngularVel / maxAngularAccel : 0.15;
     const rotStop = Math.max(Math.min(calculatedRotStop * 2, 4.0), 0.2); // Clamp between 0.2 and 4.0 seconds
     
     const vel = state.velocity;
@@ -214,10 +214,9 @@
 
     // Edge case: very low angular velocity
     if (Math.abs(state.angularVelocity) > 1e-10) {
-      const inertia = Math.max(env.inertia ?? 1, 0.1);
       const yawTorqueNm = Math.max(state.thrustBudget.yaw_kNm ?? 0, 0) * 1000;
-      const moment = inertia * mass;
-      let maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0;
+      const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
+      let maxAngularAccel = yawTorqueNm > 0 && Izz > 0 ? yawTorqueNm / Izz : 0;
       
       // Limit by angular_dps
       const angularDps = summary?.performance?.angular_dps || summary?.angular_dps;

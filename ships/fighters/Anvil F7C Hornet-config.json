@@ -47,12 +47,6 @@
       "pitch": null,
       "yaw": null,
       "roll": null
-    },
-    "accel_fwd_mps2": 80,
-    "strafe_mps2": {
-      "x": 80,
-      "y": 80,
-      "z": 80
     }
   },
   "propulsion": {
@@ -69,9 +63,7 @@
       "pitch_kNm": 481,
       "yaw_kNm": 602,
       "roll_kNm": 321
-    },
-    "main_thrust_MN": 5.76,
-    "rcs_budget_MN": 1.73
+    }
   },
   "power_opt": {
     "reactor_MW": 25.2,

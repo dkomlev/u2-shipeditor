@@ -13,15 +13,33 @@
   const KNM_TO_NM = 1000;
 
   function createState(config) {
+    // Calculate inertia tensor from geometry if not provided
+    const length_m = config.geometry?.length_m ?? 20;
+    const width_m = config.geometry?.width_m ?? 14;
+    const mass_t = config.mass_t ?? config.mass?.dry_t ?? 1;
+    const mass_kg = mass_t * 1000;
+    
+    // Rod approximation for spacecraft inertia tensor
+    // I = k * m * L²  where k depends on mass distribution
+    const defaultIxx = 0.08 * mass_kg * width_m * width_m;   // Roll (around longitudinal axis)
+    const defaultIyy = 0.12 * mass_kg * length_m * length_m; // Pitch (around lateral axis)
+    const defaultIzz = 0.15 * mass_kg * length_m * length_m; // Yaw (around vertical axis)
+    
     return {
       time: 0,
       position: { x: 0, y: 0 },
       velocity: { x: 0, y: 0 },
+      momentum: { x: 0, y: 0 },
       orientation: 0,
       angularVelocity: 0,
-      mass_t: config.mass_t ?? 1,
+      mass_t: mass_t,
       thrustBudget: resolveThrust(config),
       angular_dps: config.performance?.angular_dps || config.angular_dps,
+      inertiaTensor: {
+        Ixx: config.inertia_opt?.Ixx ?? defaultIxx,
+        Iyy: config.inertia_opt?.Iyy ?? defaultIyy,
+        Izz: config.inertia_opt?.Izz ?? defaultIzz
+      },
       camera: {
         position: { x: 0, y: 0 },
         velocity: { x: 0, y: 0 }
@@ -51,7 +69,6 @@
   function step(state, input, env) {
     const dt = env.dt_sec ?? 1 / 60;
     const c = env.c_mps ?? 10000;
-    const maxSpeed = c * 0.999;
     const mass_kg = state.mass_t * 1000;
 
     // body accelerations
@@ -75,22 +92,43 @@
     const worldAx = forwardVec.x * forwardAccel + rightVec.x * lateralAccel;
     const worldAy = forwardVec.y * forwardAccel + rightVec.y * lateralAccel;
 
-    let vx = state.velocity.x + worldAx * dt;
-    let vy = state.velocity.y + worldAy * dt;
-    const speed = Math.sqrt(vx * vx + vy * vy);
-    if (speed > maxSpeed) {
-      const scale = maxSpeed / speed;
-      vx *= scale;
-      vy *= scale;
-    }
+    // Relativistic momentum integration (Special Relativity)
+    // F = dp/dt where p = γmv
+    const Fx = worldAx * mass_kg; // N
+    const Fy = worldAy * mass_kg; // N
+
+    // Update momentum: p_new = p_old + F*dt
+    const px = (state.momentum?.x ?? 0) + Fx * dt;
+    const py = (state.momentum?.y ?? 0) + Fy * dt;
+
+    // Recover velocity from momentum using SR formula
+    // From p = γmv and γ = sqrt(1 + (p/mc)²), we get:
+    // v = p / sqrt(m² + p²/c²)
+    // This naturally ensures v < c without artificial clamping
+    const p2 = px * px + py * py;
+    const m2 = mass_kg * mass_kg;
+    const c2 = c * c;
+    const denominator = Math.sqrt(m2 + p2 / c2);
+    
+    const vx = px / denominator;
+    const vy = py / denominator;
+    
+    // Calculate gamma for relativistic effects on rotation
+    const gamma = Math.sqrt(1 + p2 / (m2 * c2));
 
     const newOrientation = wrapAngle(state.orientation + state.angularVelocity * dt);
     const torqueNm = torqueInput * (state.thrustBudget.yaw_kNm ?? 0) * KNM_TO_NM;
-    const moment = Math.max(env.inertia ?? 1, 0.1) * mass_kg;
-    const angularAcceleration = torqueNm / moment;
+    
+    // Use proper moment of inertia for yaw rotation (around vertical axis)
+    // In 2D simulation, we only have yaw, so use Izz
+    const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass_kg * 20 * 20); // fallback
+    // Approximate relativistic increase of rotational inertia
+    const Izz_rel = Izz * gamma;
+    const angularAcceleration = torqueNm / Izz_rel;
     let newAngularVelocity = state.angularVelocity + angularAcceleration * dt;
     
-    // Clamp angular velocity to 0 if ship cannot rotate
+    // Pure physics - no artificial limits
+    // Angular velocity is limited only by ship's physical capabilities (RCS thrust and inertia)
     const angularDps = state.angular_dps;
     if (angularDps && typeof angularDps.yaw === 'number') {
       const maxYawRps = (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180;
@@ -98,10 +136,6 @@
         newAngularVelocity = 0;
       }
     }
-    
-    // Safety clamp: prevent excessive angular velocities (emergency limit)
-    const maxSafeAngularVel = 4 * Math.PI; // 2 rotations per second max
-    newAngularVelocity = Math.max(-maxSafeAngularVel, Math.min(maxSafeAngularVel, newAngularVelocity));
 
     const nextPosition = {
       x: state.position.x + vx * dt,
@@ -114,6 +148,7 @@
       time: state.time + dt,
       position: nextPosition,
       velocity: { x: vx, y: vy },
+      momentum: { x: px, y: py },
       orientation: newOrientation,
       angularVelocity: newAngularVelocity,
       camera: newCamera

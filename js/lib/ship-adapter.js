@@ -149,6 +149,10 @@
       sourceLabel: sourcePath?.startsWith("local:")
         ? "Импортированный JSON"
         : `Файл: ${sourcePath || "—"}`,
+      // Add physical properties for jerk calculations
+      geometry: config.geometry ?? null,
+      inertia_opt: config.inertia_opt ?? null,
+      propulsion: config.propulsion ?? null,
       assist: assistProfile,
       assist_profile: assistProfile.handling_style,
       assist_slip_limit_deg: assistProfile.handling?.slip_limit_deg ?? null,
