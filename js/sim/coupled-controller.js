@@ -41,14 +41,31 @@
 
       const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
       const thrustBudget = state.thrustBudget || {};
-      const forwardCap = accelFromBudget(thrustBudget.forward_kN, mass);
-      const backwardCap = accelFromBudget(thrustBudget.backward_kN ?? thrustBudget.forward_kN, mass);
-      const lateralCap = accelFromBudget(thrustBudget.lateral_kN, mass);
+      const baseForwardCap = accelFromBudget(thrustBudget.forward_kN, mass);
+      const baseBackwardCap = accelFromBudget(thrustBudget.backward_kN ?? thrustBudget.forward_kN, mass);
+      const baseLateralCap = accelFromBudget(thrustBudget.lateral_kN, mass);
+      const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
+      const vOverC = Math.min(speed / c, 0.999999);
+      const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
+      const gammaCubed = gamma * gamma * gamma;
+      const forwardCap = gammaCubed > 0 ? baseForwardCap / gammaCubed : 0;
+      const backwardCap = gammaCubed > 0 ? baseBackwardCap / gammaCubed : 0;
+      const lateralCap = gamma > 0 ? baseLateralCap / gamma : 0;
+      if (env) {
+        const relativistic = env.relativistic || {};
+        relativistic.gamma = gamma;
+        relativistic.v_over_c = vOverC;
+        relativistic.speed_mps = speed;
+        relativistic.c_mps = c;
+        env.relativistic = relativistic;
+        env.gamma = gamma;
+        env.v_over_c = vOverC;
+        env.speed_mps = speed;
+      }
       const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
       const yawAccelCap = angularAccelFromBudget(thrustBudget.yaw_kNm, Izz);
 
       const beta = calcSlip(state);
-      const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
       const turnInput = clamp(input.turn ?? input.torque ?? 0, -1, 1);
       const throttleInput = clamp(input.thrustForward ?? 0, -1, 1);
       const strafeInput = clamp(input.thrustRight ?? 0, -1, 1);
@@ -105,8 +122,6 @@
       const torque = clamp(normalizedTorque * torqueModifier, -1, 1);
 
       // SR telemetry (§8 ТЗ v0.6.3)
-      const vOverC = Math.min(speed / c, 0.999);
-      const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
       const a_fwd_eff = forwardJerk.value / Math.pow(gamma, 3);
       const a_lat_eff = combinedLatAccel / gamma;
 

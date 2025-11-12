@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>U2 Diagnostics · Fastest Ship SR Stand v0.7.2 (build 003)</title>
+  <title>U2 Diagnostics · Fastest Ship SR Stand</title>
   <style>
     body { font-family: Inter, -apple-system, Segoe UI, sans-serif; margin: 0; background: #0b1020; color: #e6eef7; }
     .wrap { padding: 16px; max-width: 1200px; margin: 0 auto; }
@@ -23,10 +23,31 @@
     canvas { width: 100%; height: 300px; background: #0a0f22; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   </style>
+  <script src="../js/lib/build-info.js"></script>
+  <script>
+    (function () {
+      const info = (typeof window !== "undefined" && window.U2BuildInfo) || null;
+      if (info && info.label) {
+        document.title = `U2 Diagnostics · Fastest Ship SR Stand ${info.label}`;
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="wrap">
-    <h1>Diagnostics: Fastest Ship SR Stand <span class="muted">v0.7.2 build 003</span></h1>
+    <h1>Diagnostics: Fastest Ship SR Stand <span class="muted" id="diagVersionBadge"></span></h1>
+    <script>
+      (function () {
+        const info = (typeof window !== "undefined" && window.U2BuildInfo) || {};
+        const buildId = info.buildId || (typeof info.build === "number" ? info.build.toString().padStart(3, "0") : "000");
+        const version = info.version || "0.0.0";
+        const label = info.label || `v${version} build ${buildId}`;
+        const badge = document.getElementById("diagVersionBadge");
+        if (badge) {
+          badge.textContent = label;
+        }
+      })();
+    </script>
     <p class="muted">Цель: симулировать самый быстрый корабль на полном тяговом режиме и записать v(t), v/c, γ(t), оценить время достижения 0.5c/0.9c/0.99c с учётом релятивистской динамики.</p>
 
     <div class="row">

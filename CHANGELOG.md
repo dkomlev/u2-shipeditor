@@ -1,6 +1,21 @@
 # Universe Unlimited - Changelog
 
-## Version 0.7.2 Build 003 (Current)
+## Version 0.7.3 Build 001 (Current)
+
+### Build & Telemetry
+
+- Added `build-info.json` + `js/lib/build-info.js` as the single source of truth for version/build metadata across browser and Node targets.
+- New `scripts/bump-build.cjs` hooked into `npm run build` automatically increments the build number (resetting on version bumps) and regenerates the runtime module.
+- FlightTest HUD + Diagnostics overlay now read the build label dynamically and update document titles, loading states, and on-screen badges.
+- Introduced `npm run bump` helper for ad-hoc build increments when a full manifest rebuild is unnecessary.
+
+### Versioning
+
+- Package version bumped to `0.7.3`; manifests and diagnostics pick up the value from the shared build module.
+
+---
+
+## Version 0.7.2 Build 003
 
 ### Physics Improvements
 

@@ -25,7 +25,7 @@
         })
       : null;
 
-    function update(state, input, env) {
+    function update(state, input, env = {}) {
       const dt = env.dt_sec ?? 1 / 60;
       const modeCoupled = !!input.modeCoupled;
       const autopilot = !!input.autopilot;
@@ -46,6 +46,7 @@
         if (input.boost && boostCooldownTimer <= 0 && summary?.assist?.brake) {
           boostCooldownTimer = summary.assist.brake.boost_cooldown_s ?? 15;
         }
+        ensureRelativisticContext(state, env);
         return {
           command: brakeResult.command,
           mode: "Brake",
@@ -92,6 +93,7 @@
         telemetry = coupledResult.telemetry;
         prevAngularAccel = 0;  // Reset in Coupled mode
       } else {
+        ensureRelativisticContext(state, env);
         // Decoupled: limit torque by available thrust budget and angular velocity limits
         const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
         const thrustBudget = state.thrustBudget || {};
@@ -255,10 +257,17 @@
 
   function buildTelemetry(state, assist = {}, env = {}) {
     const beta = calcSlip(state) * (180 / Math.PI);
-    const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
-    const c = env.c_mps ?? 10000;
-    const vOverC = Math.min(speed / c, 0.999);
-    const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
+    const relativistic = env.relativistic || {};
+    const c = env.c_mps ?? relativistic.c_mps ?? 10000;
+    const speed = env.speed_mps ?? relativistic.speed_mps ?? Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
+    let vOverC = env.v_over_c ?? relativistic.v_over_c;
+    if (!Number.isFinite(vOverC)) {
+      vOverC = c > 0 ? Math.min(speed / c, 0.999999) : 0;
+    }
+    let gamma = env.gamma ?? relativistic.gamma;
+    if (!Number.isFinite(gamma)) {
+      gamma = 1 / Math.sqrt(1 - Math.min(vOverC * vOverC, 0.999999));
+    }
     
     return {
       slip_deg: beta,
@@ -273,6 +282,23 @@
       a_fwd_eff_mps2: 0,
       a_lat_eff_mps2: 0
     };
+  }
+
+  function ensureRelativisticContext(state, env = {}) {
+    const c = env.c_mps ?? 10000;
+    const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
+    const vOverC = c > 0 ? Math.min(speed / c, 0.999999) : 0;
+    const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
+    const relativistic = env.relativistic || {};
+    relativistic.gamma = gamma;
+    relativistic.v_over_c = vOverC;
+    relativistic.speed_mps = speed;
+    relativistic.c_mps = c;
+    env.relativistic = relativistic;
+    env.gamma = gamma;
+    env.v_over_c = vOverC;
+    env.speed_mps = speed;
+    return relativistic;
   }
 
   function calcSlip(state) {
