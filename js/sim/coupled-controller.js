@@ -40,12 +40,10 @@
       const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
       const thrustBudget = state.thrustBudget || {};
       
-      // Вычисляем релятивистские параметры ДО расчета ускорений
       const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
       const vOverC = Math.min(speed / c, 0.999);
       const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
       
-      // РЕЛЯТИВИСТСКИЕ ускорения: продольное делится на γ³, поперечное на γ
       const rawForwardCap = accelFromBudget(thrustBudget.forward_kN, mass);
       const rawBackwardCap = accelFromBudget(thrustBudget.backward_kN ?? thrustBudget.forward_kN, mass);
       const rawLateralCap = accelFromBudget(thrustBudget.lateral_kN, mass);
@@ -79,16 +77,20 @@
       const forwardDivisor = forwardJerk.value >= 0 ? forwardCap : backwardCap;
       const thrustForward = forwardDivisor > 0 ? clamp(forwardJerk.value / forwardDivisor, -1, 1) : 0;
 
-      // Limit angular velocity to ship specifications
+      // Limit angular velocity to ship specifications - CONSISTENT with Decoupled mode
       const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
-      const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
+      const currentAngularVel = state.angularVelocity ?? 0;
       let torqueModifier = 1;
 
+      // If max angular velocity is 0, completely disable rotation
       if (maxAngularVelRps === 0) {
         torqueModifier = 0;
-      } else if (currentAngularVel >= maxAngularVelRps * 0.95) {
-        const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
+      } 
+      // If approaching max angular velocity, only allow braking torque
+      else if (Math.abs(currentAngularVel) >= maxAngularVelRps * 0.95) {
+        const velDirection = Math.sign(currentAngularVel);
         const turnDirection = turnInput >= 0 ? 1 : -1;
+        // Only allow torque that opposes current rotation
         if (turnDirection === velDirection && Math.abs(turnInput) > 0.1) {
           torqueModifier = 0;
         }
@@ -97,19 +99,20 @@
       const rawAngularAccel = solveYawCommand(
         turnInput,
         slipError,
-        state.angularVelocity ?? 0,
+        currentAngularVel,
         yawAccelCap,
         handling
       );
       
-      const maxAngularAccelFromDps = maxAngularVelRps / 0.2;
-      const limitedAngularAccel = clamp(rawAngularAccel, -maxAngularAccelFromDps, maxAngularAccelFromDps);
+      // Apply torque modifier to respect ship's angular velocity limits
+      const limitedAngularAccel = rawAngularAccel * torqueModifier;
       const normalizedTorque = yawAccelCap > 0
         ? clamp(limitedAngularAccel / yawAccelCap, -1, 1)
         : clamp(limitedAngularAccel, -1, 1);
-      const torque = clamp(normalizedTorque * torqueModifier, -1, 1);
+      
+      const torque = clamp(normalizedTorque, -1, 1);
 
-      // SR telemetry с релятивистскими эффективными ускорениями
+      // SR telemetry
       const a_fwd_eff = forwardJerk.value / Math.pow(gamma, 3);
       const a_lat_eff = combinedLatAccel / gamma;
 
@@ -141,6 +144,7 @@
     };
   }
 
+  // ... остальные функции без изменений (sanitizeHandling, sanitizeJerk, и т.д.)
   function sanitizeHandling(raw = {}, profileName = "Balanced") {
     const profile = profileName || raw.profileName || "Balanced";
     return {
