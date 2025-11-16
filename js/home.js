@@ -2,6 +2,7 @@
 
 (function () {
   const STORAGE_KEY = "u2.selectedShip";
+  const FLIGHT_CONFIG_STORAGE_KEY = "u2.flightTest.appConfig";
   const PRESETS = ["Balanced", "Sport", "Rally", "Muscle", "F1", "Industrial", "Truck", "Warship", "Liner", "Recon"];
   const SHIP_ADAPTER =
     (typeof window !== "undefined" && window.U2ShipAdapter) ||
@@ -466,9 +467,15 @@
 
     try {
       const payload = buildFlightTestAppConfig(state.current);
-      const filename = `u2-flight-test-${state.current.summary.id || "ship"}.json`;
-      downloadJson(payload, filename);
-      showStatus("AppConfig сформирован. Загрузите файл в Flight Test 2D.", false);
+      const handoff = persistFlightTestConfig(payload);
+      if (handoff) {
+        showStatus("Запускаем Flight Test с выбранным кораблём…", false);
+        window.location.href = "flight-test.html";
+      } else {
+        const filename = `u2-flight-test-${state.current.summary.id || "ship"}.json`;
+        downloadJson(payload, filename);
+        showStatus("Не удалось передать данные в стенд, скачан JSON.", true);
+      }
     } catch (error) {
       console.error(error);
       showStatus("Не удалось собрать AppConfig.", true);
@@ -555,6 +562,19 @@
     anchor.download = filename;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  function persistFlightTestConfig(payload) {
+    try {
+      if (typeof window === "undefined" || !window.sessionStorage) {
+        return false;
+      }
+      window.sessionStorage.setItem(FLIGHT_CONFIG_STORAGE_KEY, JSON.stringify(payload));
+      return true;
+    } catch (error) {
+      console.warn("Не удалось сохранить AppConfig в sessionStorage", error);
+      return false;
+    }
   }
 
   function showStatus(message, isError) {

@@ -13,6 +13,31 @@
   }
 })(typeof self !== "undefined" ? self : this, function () {
   
+  const SESSION_STORAGE_KEY = "u2.flightTest.appConfig";
+  const cloneValue =
+    typeof structuredClone === "function"
+      ? (value) => structuredClone(value)
+      : (value) => {
+          if (value === null || typeof value !== "object") {
+            return value;
+          }
+          return JSON.parse(JSON.stringify(value));
+        };
+  const KNOWN_KEYS = new Set([
+    "version",
+    "build",
+    "paths",
+    "world",
+    "physics",
+    "render",
+    "hud",
+    "input",
+    "collision",
+    "asteroids",
+    "autopilot",
+    "debug"
+  ]);
+
   const DEFAULT_CONFIG = {
     version: "0.6.3",
     build: "flight-test",
@@ -96,6 +121,11 @@
    * @returns {Promise<Object>} Validated AppConfig
    */
   async function loadAppConfig(path = "./config/u2-appconfig.json") {
+    const sessionConfig = readSessionConfig();
+    if (sessionConfig) {
+      return sessionConfig;
+    }
+
     try {
       const response = await fetch(path);
       if (!response.ok) {
@@ -108,7 +138,7 @@
       
     } catch (error) {
       console.error("Failed to load AppConfig:", error);
-      return structuredClone(DEFAULT_CONFIG);
+      return cloneValue(DEFAULT_CONFIG);
     }
   }
 
@@ -117,7 +147,10 @@
    * Implements cross-validation from §1.3 ТЗ
    */
   function validateAndMerge(raw) {
-    const config = structuredClone(DEFAULT_CONFIG);
+    const config = cloneValue(DEFAULT_CONFIG);
+    if (!raw || typeof raw !== "object") {
+      return config;
+    }
     
     // Deep merge
     if (raw.version) config.version = raw.version;
@@ -188,6 +221,8 @@
     if (raw.debug) {
       Object.assign(config.debug, raw.debug);
     }
+
+    applyExtraKeys(raw, config);
     
     return config;
   }
@@ -197,6 +232,33 @@
    */
   function getDefaultConfig() {
     return structuredClone(DEFAULT_CONFIG);
+  }
+
+  function readSessionConfig() {
+    if (typeof window === "undefined" || !window.sessionStorage) {
+      return null;
+    }
+    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    try {
+      const parsed = JSON.parse(raw);
+      return validateAndMerge(parsed);
+    } catch (error) {
+      console.warn("Failed to parse session AppConfig", error);
+      return null;
+    }
+  }
+
+  function applyExtraKeys(source, target) {
+    Object.keys(source).forEach((key) => {
+      if (KNOWN_KEYS.has(key)) {
+        return;
+      }
+      target[key] = cloneValue(source[key]);
+    });
   }
 
   return {

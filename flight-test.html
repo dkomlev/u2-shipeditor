@@ -230,55 +230,69 @@
       console.log("Loading AppConfig...");
       const appConfig = await appConfigLoader.loadAppConfig();
       console.log("AppConfig loaded:", appConfig);
+      const hasInlineShip = Boolean(appConfig.inline_ship);
 
       // Load ShipConfig
-      console.log("Loading manifest...");
-      try {
-        await resources.loadManifest();
-        console.log("Manifest loaded successfully");
-      } catch (error) {
-        console.error("Failed to load manifest:", error);
-        document.getElementById("loading").innerHTML = `
-          <div class="spinner"></div>
-          <span style="color: #f87171;">Failed to load manifest: ${error.message}</span>
-        `;
-        return;
-      }
-
-      const manifest = resources.getManifestSync();
-      console.log("Manifest entries:", manifest?.length || 0);
-      
-      if (!manifest || !manifest.length) {
-        console.error("Manifest is empty");
-        document.getElementById("loading").innerHTML = `
-          <div class="spinner"></div>
-          <span style="color: #f87171;">No ships found in manifest</span>
-        `;
-        return;
-      }
-
-      // Load ship from AppConfig path or random
-      let shipPath = appConfig.paths.ship_config_path;
-      
-      // Validate path exists in manifest
-      if (shipPath) {
-        const pathExists = manifest.some(entry => entry.path === shipPath);
-        if (!pathExists) {
-          console.warn(`Ship path from AppConfig not found: ${shipPath}. Using random ship.`);
-          shipPath = null;
+      let manifest = [];
+      if (!hasInlineShip) {
+        console.log("Loading manifest...");
+        try {
+          await resources.loadManifest();
+          console.log("Manifest loaded successfully");
+          manifest = resources.getManifestSync() || [];
+          console.log("Manifest entries:", manifest.length);
+        } catch (error) {
+          console.error("Failed to load manifest:", error);
+          document.getElementById("loading").innerHTML = `
+            <div class="spinner"></div>
+            <span style="color: #f87171;">Failed to load manifest: ${error.message}</span>
+          `;
+          return;
         }
+
+        if (!manifest.length) {
+          console.error("Manifest is empty");
+          document.getElementById("loading").innerHTML = `
+            <div class="spinner"></div>
+            <span style="color: #f87171;">No ships found in manifest</span>
+          `;
+          return;
+        }
+      } else {
+        console.log("Inline ShipConfig payload detected; manifest load skipped.");
       }
-      
-      // Fallback to random ship
-      if (!shipPath) {
-        const randomIndex = Math.floor(Math.random() * manifest.length);
-        shipPath = manifest[randomIndex].path;
-        console.log(`Selected random ship: ${shipPath}`);
+
+      // Load ship from AppConfig path, inline payload, or random
+      let shipPath = hasInlineShip ? null : appConfig.paths?.ship_config_path;
+      let shipJson = null;
+
+      if (!hasInlineShip) {
+        if (shipPath) {
+          const pathExists = manifest.some((entry) => entry.path === shipPath);
+          if (!pathExists) {
+            console.warn(`Ship path from AppConfig not found: ${shipPath}. Using random ship.`);
+            shipPath = null;
+          }
+        }
+
+        if (!shipPath) {
+          const randomIndex = Math.floor(Math.random() * manifest.length);
+          shipPath = manifest[randomIndex].path;
+          console.log(`Selected random ship: ${shipPath}`);
+        }
+
+        console.log("Loading ship:", shipPath);
+        shipJson = await resources.getShipConfig(shipPath);
+        console.log("Ship JSON loaded:", shipJson);
+      } else {
+        shipJson = appConfig.inline_ship;
+        shipPath =
+          appConfig.selected_ship?.path ||
+          appConfig.selected_ship?.id ||
+          appConfig.selected_ship?.name ||
+          "inline";
+        console.log("Using inline ShipConfig from launcher payload.");
       }
-      
-      console.log("Loading ship:", shipPath);
-      const shipJson = await resources.getShipConfig(shipPath);
-      console.log("Ship JSON loaded:", shipJson);
       
       const summary = adapter.parseShipConfig(shipJson, shipPath);
       console.log("Ship summary:", summary.name);
