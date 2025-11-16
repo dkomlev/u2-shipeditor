@@ -279,6 +279,7 @@
       const hasInlineShip = Boolean(appConfig.inline_ship);
       const pixelsPerMeter = appConfig.render?.pixels_per_meter ?? 0.4;
       const zoom = createZoomState(appConfig.render, pixelsPerMeter);
+      const initialZoomPercent = Number(appConfig.render?.initial_zoom_percent) || 1000;
       let currentScale = zoom.value;
       const zoomValueEl = document.getElementById("zoomValue");
       const zoomOutBtn = document.querySelector('[data-zoom="out"]');
@@ -370,7 +371,7 @@
       canvas.width = appConfig.render.canvas?.width || window.innerWidth;
       canvas.height = appConfig.render.canvas?.height || window.innerHeight;
       console.log("Canvas size:", canvas.width, "x", canvas.height);
-      applyInitialZoom(canvas, shipGeometry);
+      applyInitialZoom(canvas, shipGeometry, initialZoomPercent);
 
       // Create simulation state
       console.log("Creating simulation state...");
@@ -543,7 +544,11 @@
         setScale(zoom.value * factor);
       }
 
-      function applyInitialZoom(canvas, geometry) {
+      function applyInitialZoom(canvas, geometry, percentOverride) {
+        if (Number.isFinite(percentOverride) && percentOverride > 0) {
+          setScale(zoom.default * (percentOverride / 100));
+          return;
+        }
         const autoScale = computeAutoScale(canvas, geometry, zoom.default);
         setScale(autoScale);
       }

@@ -1536,7 +1536,16 @@ export const NOMINALS = {
   }
 };
 
-const RCS_RATIO = { snub:0.30, small:0.30, medium:0.30, heavy:0.20, capital:0.20 };
+export const RCS_RATIO = { snub:0.30, small:0.30, medium:0.30, heavy:0.20, capital:0.20 };
+
+export function computeHullRadius(length, width) {
+  const L = Number(length);
+  const W = Number(width);
+  if (!(L > 0) || !(W > 0)) {
+    return 0;
+  }
+  return Number((Math.hypot(L, W) / 2).toFixed(2));
+}
 
 export function finalizeNominals(entry){
   const m = entry?.mass?.dry_t ?? 0;

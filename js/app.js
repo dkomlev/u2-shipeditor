@@ -11,6 +11,50 @@ const state = {
   ui: { showJson: false }
 };
 
+const SECTION_SETS = {
+  geometry: ['geometry.length_m', 'geometry.width_m', 'geometry.height_m', 'mass.dry_t'],
+  signatures: ['signatures.IR', 'signatures.EM', 'signatures.CS'],
+  performance: [
+    'performance.accel_fwd_mps2',
+    'performance.strafe_mps2.x',
+    'performance.strafe_mps2.y',
+    'performance.strafe_mps2.z',
+    'performance.angular_dps.pitch',
+    'performance.angular_dps.yaw',
+    'performance.angular_dps.roll'
+  ],
+  propulsion: ['propulsion.main_thrust_MN', 'propulsion.rcs_budget_MN'],
+  payload: ['payload.cargo_scu', 'payload.crew', 'weapons.summary'],
+  hardpoints: ['hardpoints_opt.fixed', 'hardpoints_opt.gimbals', 'hardpoints_opt.turrets', 'hardpoints_opt.missiles', 'notes_opt']
+};
+
+const RECOMMEND_FIELDS = buildRecommendFields();
+
+function buildRecommendFields() {
+  return [
+    { path: 'geometry.length_m', label: 'Длина, м', numeric: true, tolerance: 0.12, decimals: 1 },
+    { path: 'geometry.width_m', label: 'Ширина, м', numeric: true, tolerance: 0.12, decimals: 1 },
+    { path: 'geometry.height_m', label: 'Высота, м', numeric: true, tolerance: 0.15, decimals: 1 },
+    { path: 'geometry.hull_radius_m', label: 'Радиус корпуса', numeric: true, tolerance: 0.1, decimals: 2 },
+    { path: 'mass.dry_t', label: 'Масса, т', numeric: true, tolerance: 0.18, decimals: 1 },
+    { path: 'signatures.IR', label: 'IR', numeric: true, tolerance: 0.34, decimals: 0 },
+    { path: 'signatures.EM', label: 'EM', numeric: true, tolerance: 0.34, decimals: 0 },
+    { path: 'signatures.CS', label: 'CS', numeric: true, tolerance: 0.34, decimals: 0 },
+    { path: 'performance.accel_fwd_mps2', label: 'Accel fwd', numeric: true, tolerance: 0.2, decimals: 1 },
+    { path: 'performance.strafe_mps2.x', label: 'Strafe X', numeric: true, tolerance: 0.25, decimals: 1 },
+    { path: 'performance.strafe_mps2.y', label: 'Strafe Y', numeric: true, tolerance: 0.25, decimals: 1 },
+    { path: 'performance.strafe_mps2.z', label: 'Strafe Z', numeric: true, tolerance: 0.25, decimals: 1 },
+    { path: 'performance.angular_dps.pitch', label: 'Pitch DPS', numeric: true, tolerance: 0.25, decimals: 1 },
+    { path: 'performance.angular_dps.yaw', label: 'Yaw DPS', numeric: true, tolerance: 0.25, decimals: 1 },
+    { path: 'performance.angular_dps.roll', label: 'Roll DPS', numeric: true, tolerance: 0.25, decimals: 1 },
+    { path: 'propulsion.main_thrust_MN', label: 'Главная тяга', numeric: true, tolerance: 0.2, decimals: 2 },
+    { path: 'propulsion.rcs_budget_MN', label: 'RCS бюджет', numeric: true, tolerance: 0.2, decimals: 2 },
+    { path: 'payload.cargo_scu', label: 'Груз, SCU', numeric: true, tolerance: 0.25, decimals: 0 },
+    { path: 'payload.crew', label: 'Экипаж', numeric: false },
+    { path: 'weapons.summary', label: 'Вооружение', numeric: false }
+  ];
+}
+
 const dom = {};
 const bindings = [];
 const textBindings = [];
@@ -884,7 +928,14 @@ async function importConfig() {
     alert('Выберите файл JSON');
     return;
   }
-  const text = await file.text();
+  let text = '';
+  try {
+    text = await readFileAsText(file);
+  } catch (error) {
+    console.error('Не удалось прочитать файл ShipConfig', error);
+    alert('Не удалось прочитать файл. Проверьте права доступа.');
+    return;
+  }
   let parsed;
   try {
     parsed = JSON.parse(text);
@@ -920,6 +971,18 @@ async function copyJson() {
   } catch {
     logStatus('Не удалось скопировать JSON', 'error');
   }
+}
+
+function readFileAsText(file) {
+  if (file?.text) {
+    return file.text();
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('readAsText failed'));
+    reader.readAsText(file);
+  });
 }
 
 function loadSprite(file) {
@@ -1150,42 +1213,3 @@ function hideInfoPopover() {
   infoPopoverTarget = null;
 }
 
-const SECTION_SETS = {
-  geometry: ['geometry.length_m', 'geometry.width_m', 'geometry.height_m', 'mass.dry_t'],
-  signatures: ['signatures.IR', 'signatures.EM', 'signatures.CS'],
-  performance: [
-    'performance.accel_fwd_mps2',
-    'performance.strafe_mps2.x',
-    'performance.strafe_mps2.y',
-    'performance.strafe_mps2.z',
-    'performance.angular_dps.pitch',
-    'performance.angular_dps.yaw',
-    'performance.angular_dps.roll'
-  ],
-  propulsion: ['propulsion.main_thrust_MN', 'propulsion.rcs_budget_MN'],
-  payload: ['payload.cargo_scu', 'payload.crew', 'weapons.summary'],
-  hardpoints: ['hardpoints_opt.fixed', 'hardpoints_opt.gimbals', 'hardpoints_opt.turrets', 'hardpoints_opt.missiles', 'notes_opt']
-};
-
-const RECOMMEND_FIELDS = [
-  { path: 'geometry.length_m', label: 'Длина, м', numeric: true, tolerance: 0.12, decimals: 1 },
-  { path: 'geometry.width_m', label: 'Ширина, м', numeric: true, tolerance: 0.12, decimals: 1 },
-  { path: 'geometry.height_m', label: 'Высота, м', numeric: true, tolerance: 0.15, decimals: 1 },
-  { path: 'geometry.hull_radius_m', label: 'Радиус корпуса', numeric: true, tolerance: 0.1, decimals: 2 },
-  { path: 'mass.dry_t', label: 'Масса, т', numeric: true, tolerance: 0.18, decimals: 1 },
-  { path: 'signatures.IR', label: 'IR', numeric: true, tolerance: 0.34, decimals: 0 },
-  { path: 'signatures.EM', label: 'EM', numeric: true, tolerance: 0.34, decimals: 0 },
-  { path: 'signatures.CS', label: 'CS', numeric: true, tolerance: 0.34, decimals: 0 },
-  { path: 'performance.accel_fwd_mps2', label: 'Accel fwd', numeric: true, tolerance: 0.2, decimals: 1 },
-  { path: 'performance.strafe_mps2.x', label: 'Strafe X', numeric: true, tolerance: 0.25, decimals: 1 },
-  { path: 'performance.strafe_mps2.y', label: 'Strafe Y', numeric: true, tolerance: 0.25, decimals: 1 },
-  { path: 'performance.strafe_mps2.z', label: 'Strafe Z', numeric: true, tolerance: 0.25, decimals: 1 },
-  { path: 'performance.angular_dps.pitch', label: 'Pitch DPS', numeric: true, tolerance: 0.25, decimals: 1 },
-  { path: 'performance.angular_dps.yaw', label: 'Yaw DPS', numeric: true, tolerance: 0.25, decimals: 1 },
-  { path: 'performance.angular_dps.roll', label: 'Roll DPS', numeric: true, tolerance: 0.25, decimals: 1 },
-  { path: 'propulsion.main_thrust_MN', label: 'Главная тяга', numeric: true, tolerance: 0.2, decimals: 2 },
-  { path: 'propulsion.rcs_budget_MN', label: 'RCS бюджет', numeric: true, tolerance: 0.2, decimals: 2 },
-  { path: 'payload.cargo_scu', label: 'Груз, SCU', numeric: true, tolerance: 0.25, decimals: 0 },
-  { path: 'payload.crew', label: 'Экипаж', numeric: false },
-  { path: 'weapons.summary', label: 'Вооружение', numeric: false }
-];
