@@ -1,12 +1,9 @@
 #!/usr/bin/env node
-// Realistic ship balancing based on Elite Dangerous and erkul.games
-// References:
-// - Elite Dangerous: realistic flight model with inertia, Vulture ~360°/s, Python ~120°/s, Corvette ~50°/s
-// - Star Citizen erkul.games: Hornet 48m/s² main, 48 strafe, 27 retro
+// Realistic ship balancing based on physics
 // 
 // Strategy:
-// 1. Increase main thrust by 1.5x (boost acceleration for more dynamic gameplay)
-// 2. Reduce angular acceleration to Elite Dangerous-like levels (5-8°/s² for fighters)
+// 1. Calculate main thrust from mass and desired acceleration
+// 2. Calculate angular acceleration from RCS torque and moment of inertia
 // 3. Use proper inertia tensor ratios for realistic pitch/yaw/roll differentiation
 
 import fs from 'fs';

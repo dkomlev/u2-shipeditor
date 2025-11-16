@@ -8,18 +8,19 @@
   }
 })(typeof self !== "undefined" ? self : this, function (CoupledController) {
   const EPS_V = 0.05;
+  const DEG2RAD = Math.PI / 180;
 
   function createPilotAssist(summary = {}) {
     let randomVec = { x: 0, y: 0 };
     let randomTimer = 0;
     let randomTorque = 0;
     let boostCooldownTimer = 0;
-    let prevAngularAccel = 0;  // Track angular acceleration for jerk limiting
+    let prevAngularAccel = 0;
     const coupled = CoupledController?.createCoupledController
       ? CoupledController.createCoupledController({
           handling: summary.assist?.handling,
           jerk: summary.assist?.jerk,
-          speedLimiterRatio: summary.assist?.speed_limiter_ratio,
+          config: summary,
           profileName: summary.assist?.handling_style,
           angular_dps: summary.performance?.angular_dps || summary.angular_dps
         })
@@ -35,14 +36,12 @@
         torque: clamp(input.torque ?? 0, -1, 1)
       };
 
-      // Update boost cooldown
       if (boostCooldownTimer > 0) {
         boostCooldownTimer -= dt;
       }
 
       if (input.brake) {
         const brakeResult = applyBrake(state, env, summary || {}, input.boost, boostCooldownTimer);
-        // Start cooldown if boost was used
         if (input.boost && boostCooldownTimer <= 0 && summary?.assist?.brake) {
           boostCooldownTimer = summary.assist.brake.boost_cooldown_s ?? 15;
         }
@@ -51,7 +50,7 @@
           mode: "Brake",
           autopilot: false,
           brake: true,
-          telemetry: buildTelemetry(state, summary.assist)
+          telemetry: buildTelemetry(state, summary.assist, env)
         };
       }
 
@@ -90,50 +89,38 @@
         command.thrustRight = coupledResult.command.thrustRight;
         command.torque = coupledResult.command.torque;
         telemetry = coupledResult.telemetry;
-        prevAngularAccel = 0;  // Reset in Coupled mode
+        prevAngularAccel = 0;
       } else {
-        // Decoupled: limit torque by available thrust budget and angular velocity limits
+        // Decoupled mode: still honor ship's angular velocity/acceleration limits
         const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
         const thrustBudget = state.thrustBudget || {};
         const yawTorqueNm = Math.max(thrustBudget.yaw_kNm ?? 0, 0) * 1000;
-        const moment = Math.max(env.inertia ?? 1, 0.1) * mass;
-        const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0;
+        const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
+        const physicalAngularAccel = yawTorqueNm > 0 && Izz > 0 ? yawTorqueNm / Izz : 0;
 
-        // Limit angular velocity to ship specifications
-        const angularDps = summary.performance?.angular_dps || summary.angular_dps;
-        const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
-        const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
+        const angularCaps = resolveAngularCaps(summary, state, physicalAngularAccel);
+        const maxAngularVelRps = angularCaps.maxVelRps;
+        const maxAngularAccelSpec = angularCaps.maxAccelRps2;
 
-        // Calculate desired angular acceleration from input
-        let desiredAngularAccel = command.torque; // torque is already normalized -1..1
+        if (maxAngularVelRps <= 0 || physicalAngularAccel <= 0) {
+          command.torque = 0;
+        } else {
+          const targetOmega = clamp(command.torque, -1, 1) * maxAngularVelRps;
+          const omegaError = targetOmega - (state.angularVelocity ?? 0);
+          const responseTime = Math.max(summary?.assist?.handling?.angular_response_s ?? 0.25, dt * 2);
+          let desiredAngularAccel = omegaError / responseTime;
 
-        // Limit angular acceleration by angular velocity limits (degrees per second)
-        const maxAngularAccelFromDps = maxAngularVelRps / 0.2; // time_constant = 0.2s for smooth limiting
-        desiredAngularAccel = clamp(desiredAngularAccel, -maxAngularAccelFromDps, maxAngularAccelFromDps);
+          const accelLimit = Math.min(
+            maxAngularAccelSpec,
+            maxAngularVelRps / Math.max(responseTime, 0.05)
+          );
+          desiredAngularAccel = clamp(desiredAngularAccel, -accelLimit, accelLimit);
 
-        // Removed damping to rely on ship TTX limits only
-
-        // If max angular velocity is 0, completely disable rotation
-        if (maxAngularVelRps === 0) {
-          desiredAngularAccel = 0;
-        } else if (currentAngularVel >= maxAngularVelRps * 0.95) {
-          const velDirection = (state.angularVelocity ?? 0) >= 0 ? 1 : -1;
-          const accelDirection = desiredAngularAccel >= 0 ? 1 : -1;
-          // Only allow acceleration that opposes current rotation
-          if (accelDirection === velDirection && Math.abs(desiredAngularAccel) > 0.1) {
-            desiredAngularAccel = 0;
-          }
+          const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 2.0;
+          const jerkResult = applyAngularJerk(prevAngularAccel, desiredAngularAccel, angularJerkLimit, dt);
+          prevAngularAccel = jerkResult.value;
+          command.torque = clamp(jerkResult.value / Math.max(physicalAngularAccel, 1e-6), -1, 1);
         }
-
-        // Limit by available thrust budget
-        command.torque = maxAngularAccel > 0 ? clamp(desiredAngularAccel, -maxAngularAccel, maxAngularAccel) / maxAngularAccel : 0;
-
-        // Decoupled: apply angular jerk limiting for smooth rotation ramp
-        const angularJerkLimit = summary.assist?.jerk?.angular_rps3 ?? 2.0;
-        const targetAngularAccel = command.torque;  // Normalized -1..1
-        const jerkResult = applyAngularJerk(prevAngularAccel, targetAngularAccel, angularJerkLimit, dt);
-        prevAngularAccel = jerkResult.value;
-        command.torque = jerkResult.value;
       }
 
       command.thrustForward = clamp(command.thrustForward + randomVec.y, -1, 1);
@@ -145,7 +132,7 @@
         mode: modeCoupled ? "Coupled" : "Decoupled",
         autopilot,
         brake: false,
-        telemetry: telemetry || buildTelemetry(state, summary.assist)
+        telemetry: telemetry || buildTelemetry(state, summary.assist, env)
       };
     }
 
@@ -156,7 +143,6 @@
     const g0 = 9.80665;
     const mass = Math.max(state.mass_t ?? 1, 0.1) * 1000;
     
-    // Use assist.brake settings if available, otherwise fallback to env
     const assistBrake = summary?.assist?.brake;
     const canBoost = boostRequested && cooldownRemaining <= 0;
     const gTarget = assistBrake 
@@ -165,15 +151,13 @@
     
     const stopTime = Math.max(env.brake_time ?? 0.25, 0.05);
     
-    // Calculate rotational stop time based on ship's inertia and available torque
     const inertia = Math.max(env.inertia ?? 1, 0.1);
     const yawTorqueNm = Math.max(state.thrustBudget.yaw_kNm ?? 0, 0) * 1000;
     const moment = inertia * mass;
     const maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0.1;
     const currentAngularVel = Math.abs(state.angularVelocity ?? 0);
-    // Stop time should be enough to decelerate from current velocity with available torque
-    const calculatedRotStop = currentAngularVel > 0 ? currentAngularVel / maxAngularAccel : 0.15;
-    const rotStop = Math.max(Math.min(calculatedRotStop * 2, 4.0), 0.2); // Clamp between 0.2 and 4.0 seconds
+    const calculatedRotStop = currentAngularVel > 0 && maxAngularAccel > 0 ? currentAngularVel / maxAngularAccel : 0.15;
+    const rotStop = Math.max(Math.min(calculatedRotStop * 2, 4.0), 0.2);
     
     const vel = state.velocity;
     const speed = Math.hypot(vel.x, vel.y);
@@ -182,7 +166,6 @@
     const forwardSpeed = vel.x * fwdVec.x + vel.y * fwdVec.y;
     const rightSpeed = vel.x * rightVec.x + vel.y * rightVec.y;
 
-    // SR-клампы для Brake (§4.3 ТЗ)
     const c = env.c_mps ?? 10000;
     const vOverC = Math.min(speed / c, 0.999);
     const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
@@ -191,7 +174,6 @@
     const rawBackwardCap = toAccel(state.thrustBudget.backward_kN, mass);
     const rawLateralCap = toAccel(state.thrustBudget.lateral_kN, mass);
 
-    // Apply SR clamps
     const forwardCap = Math.min(rawForwardCap / Math.pow(gamma, 3), gTarget * g0);
     const backwardCap = Math.min(rawBackwardCap / Math.pow(gamma, 3), gTarget * g0);
     const lateralCap = Math.min(rawLateralCap / gamma, gTarget * g0);
@@ -202,9 +184,7 @@
       torque: 0
     };
 
-    // Edge case: very low speed (§4.3 ТЗ)
     if (speed < 1e-10) {
-      // Only rotational damping
     } else {
       const desiredForwardAccel = -forwardSpeed / stopTime;
       const desiredRightAccel = -rightSpeed / stopTime;
@@ -212,25 +192,18 @@
       command.thrustRight = normalizeAccel(desiredRightAccel, lateralCap, lateralCap);
     }
 
-    // Edge case: very low angular velocity
     if (Math.abs(state.angularVelocity) > 1e-10) {
-      const inertia = Math.max(env.inertia ?? 1, 0.1);
       const yawTorqueNm = Math.max(state.thrustBudget.yaw_kNm ?? 0, 0) * 1000;
-      const moment = inertia * mass;
-      let maxAngularAccel = yawTorqueNm > 0 && moment > 0 ? yawTorqueNm / moment : 0;
-      
-      // Limit by angular_dps
-      const angularDps = summary?.performance?.angular_dps || summary?.angular_dps;
-      const maxAngularVelRps = angularDps ? (angularDps.yaw ?? angularDps.pitch ?? 60) * Math.PI / 180 : Math.PI;
-      const angularAccelCapFromDps = maxAngularVelRps / 0.2; // time_constant = 0.2
-      maxAngularAccel = Math.min(maxAngularAccel, angularAccelCapFromDps);
-      
-      // If max angular velocity is 0, disable rotation
-      if (maxAngularVelRps === 0) {
+      const Izz = state.inertiaTensor?.Izz ?? (0.15 * mass * 20 * 20);
+      const physicalAngularAccel = yawTorqueNm > 0 && Izz > 0 ? yawTorqueNm / Izz : 0;
+      const angularCaps = resolveAngularCaps(summary, state, physicalAngularAccel);
+      if (angularCaps.maxVelRps === 0 || angularCaps.maxAccelRps2 <= 0) {
         command.torque = 0;
       } else {
+        const dynamicCap = angularCaps.maxVelRps / Math.max(rotStop, 0.05);
+        const accelLimit = Math.min(dynamicCap, angularCaps.maxAccelRps2);
         const desiredAngularAccel = -state.angularVelocity / rotStop;
-        command.torque = maxAngularAccel > 0 ? clamp(desiredAngularAccel / maxAngularAccel, -1, 1) : 0;
+        command.torque = clamp(desiredAngularAccel / Math.max(accelLimit, 1e-6), -1, 1);
       }
     }
 
@@ -260,10 +233,10 @@
     return Math.min(Math.max(value, min), max);
   }
 
-  function buildTelemetry(state, assist = {}) {
+  function buildTelemetry(state, assist = {}, env = {}) {
     const beta = calcSlip(state) * (180 / Math.PI);
     const speed = Math.hypot(state.velocity?.x ?? 0, state.velocity?.y ?? 0);
-    const c = 10000; // fallback, ideally from env
+    const c = env.c_mps ?? 10000;
     const vOverC = Math.min(speed / c, 0.999);
     const gamma = 1 / Math.sqrt(1 - vOverC * vOverC);
     
@@ -305,6 +278,31 @@
       return { value: prev - maxDelta, clamped: true };
     }
     return { value: target, clamped: false };
+  }
+
+  function resolveAngularCaps(summary, state, physicalAccel) {
+    const angularSpec = summary?.performance?.angular_dps || summary?.angular_dps || state.angular_dps;
+    const accelSpec = summary?.performance?.angular_accel_opt || summary?.angular_accel_opt || state.angular_accel_opt;
+    let maxVelRps = Math.PI;
+    if (angularSpec) {
+      const yaw = angularSpec.yaw ?? angularSpec.pitch ?? angularSpec.roll;
+      if (typeof yaw === "number" && Number.isFinite(yaw)) {
+        maxVelRps = Math.max(yaw * DEG2RAD, 0);
+      }
+    }
+    let maxAccelRps2 = Number.isFinite(physicalAccel) ? Math.max(physicalAccel, 0) : 0;
+    if (accelSpec && typeof accelSpec.yaw === "number" && accelSpec.yaw > 0) {
+      maxAccelRps2 = Math.min(maxAccelRps2 || Infinity, accelSpec.yaw * DEG2RAD);
+    }
+    if (!Number.isFinite(maxAccelRps2) || maxAccelRps2 <= 0) {
+      maxAccelRps2 = Math.max(physicalAccel, 0);
+    } else if (Number.isFinite(physicalAccel) && physicalAccel > 0) {
+      maxAccelRps2 = Math.min(maxAccelRps2, physicalAccel);
+    }
+    return {
+      maxVelRps: maxVelRps || 0,
+      maxAccelRps2
+    };
   }
 
   return {

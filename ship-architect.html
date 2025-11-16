@@ -1,35 +1,36 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>U2 Ship Architect v0.6.5</title>
+  <title>U2 Ship Architect</title>
   <link rel="stylesheet" href="./css/app.css" />
+  <script src="js/lib/build-info.js"></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="hero card">
       <div>
-        <div class="section-title">U2 Ship Architect v0.6.5</div>
+        <div class="section-title">U2 Ship Architect &middot; <span data-build-label>v0.0.0 build 000</span></div>
         <div class="hero__meta">
           <label class="field">
-            <span>Название корабля</span>
-            <input type="text" data-bind="meta.name" placeholder="Имя" />
+            <span>╨Э╨░╨╖╨▓╨░╨╜╨╕╨╡ ╨║╨╛╤А╨░╨▒╨╗╤П</span>
+            <input type="text" data-bind="meta.name" placeholder="╨Ш╨╝╤П" />
           </label>
           <label class="field">
             <span>ID</span>
             <input type="text" data-bind="meta.id" placeholder="uuid" />
           </label>
           <label class="field">
-            <span>Версия конфига</span>
-            <input type="text" data-bind="meta.version" placeholder="0.6.0" />
+            <span>╨Т╨╡╤А╤Б╨╕╤П ╨║╨╛╨╜╤Д╨╕╨│╨░</span>
+            <input type="text" data-bind="meta.version" placeholder="0.7.4" />
           </label>
           <label class="field">
-            <span>Автор</span>
+            <span>╨Р╨▓╤В╨╛╤А</span>
             <input type="text" data-bind="meta.author" placeholder="U2 FlightLab" />
           </label>
           <label class="field">
-            <span>Вариант / подпись</span>
+            <span>╨Т╨░╤А╨╕╨░╨╜╤В / ╨┐╨╛╨┤╨┐╨╕╤Б╤М</span>
             <input type="text" data-bind="classification.variant" placeholder="Blockade runner" />
           </label>
         </div>
@@ -42,37 +43,37 @@
       <div class="hero__actions">
         <button class="btn btn-ghost" id="autoBtn">Auto</button>
         <button class="btn btn-outline" id="recommendBtn">Recommend</button>
-        <button class="btn btn-primary" id="nominalBtn">Архетип: заполнить</button>
-        <button class="btn btn-danger" id="resetBtn">Сброс</button>
+        <button class="btn btn-primary" id="nominalBtn">╨Р╤А╤Е╨╡╤В╨╕╨┐: ╨╖╨░╨┐╨╛╨╗╨╜╨╕╤В╤М</button>
+        <button class="btn btn-danger" id="resetBtn">╨б╨▒╤А╨╛╤Б</button>
       </div>
       <div class="hero__hints">
-        <span><b>Auto</b> — обновляет размер, тягу, радиус и массу по габаритам.</span>
-        <span><b>Recommend</b> — показывает подсказки для выравнивания с архетипом.</span>
-        <span><b>Архетип: заполнить</b> — перезаписывает все поля номиналами.</span>
-        <span><b>Сброс</b> — возвращает конфиг к чистому шаблону v0.6.5.</span>
+        <span><b>Auto</b> тАФ ╨╛╨▒╨╜╨╛╨▓╨╗╤П╨╡╤В ╤А╨░╨╖╨╝╨╡╤А, ╤В╤П╨│╤Г, ╤А╨░╨┤╨╕╤Г╤Б ╨╕ ╨╝╨░╤Б╤Б╤Г ╨┐╨╛ ╨│╨░╨▒╨░╤А╨╕╤В╨░╨╝.</span>
+        <span><b>Recommend</b> тАФ ╨┐╨╛╨║╨░╨╖╤Л╨▓╨░╨╡╤В ╨┐╨╛╨┤╤Б╨║╨░╨╖╨║╨╕ ╨┤╨╗╤П ╨▓╤Л╤А╨░╨▓╨╜╨╕╨▓╨░╨╜╨╕╤П ╤Б ╨░╤А╤Е╨╡╤В╨╕╨┐╨╛╨╝.</span>
+        <span><b>╨Р╤А╤Е╨╡╤В╨╕╨┐: ╨╖╨░╨┐╨╛╨╗╨╜╨╕╤В╤М</b> тАФ ╨┐╨╡╤А╨╡╨╖╨░╨┐╨╕╤Б╤Л╨▓╨░╨╡╤В ╨▓╤Б╨╡ ╨┐╨╛╨╗╤П ╨╜╨╛╨╝╨╕╨╜╨░╨╗╨░╨╝╨╕.</span>
+        <span><b>╨б╨▒╤А╨╛╤Б</b> тАФ ╨▓╨╛╨╖╨▓╤А╨░╤Й╨░╨╡╤В ╨║╨╛╨╜╤Д╨╕╨│ ╨║ ╤З╨╕╤Б╤В╨╛╨╝╤Г ╤И╨░╨▒╨╗╨╛╨╜╤Г v0.6.5.</span>
       </div>
     </header>
 
     <section class="hero-secondary">
       <article class="card mini-card">
         <div class="card-toolbar">
-          <div class="section-title">Контроль целостности</div>
-          <button class="info-btn" data-info="Проверяет габариты, массу, тягу и ассист на соответствие форме и физике.">i</button>
+          <div class="section-title">╨Ъ╨╛╨╜╤В╤А╨╛╨╗╤М ╤Ж╨╡╨╗╨╛╤Б╤В╨╜╨╛╤Б╤В╨╕</div>
+          <button class="info-btn" data-info="╨Я╤А╨╛╨▓╨╡╤А╤П╨╡╤В ╨│╨░╨▒╨░╤А╨╕╤В╤Л, ╨╝╨░╤Б╤Б╤Г, ╤В╤П╨│╤Г ╨╕ ╨░╤Б╤Б╨╕╤Б╤В ╨╜╨░ ╤Б╨╛╨╛╤В╨▓╨╡╤В╤Б╤В╨▓╨╕╨╡ ╤Д╨╛╤А╨╝╨╡ ╨╕ ╤Д╨╕╨╖╨╕╨║╨╡.">i</button>
         </div>
         <ul class="integrity-summary" id="integritySummary"></ul>
       </article>
 
       <article class="card mini-card">
         <div class="card-toolbar">
-          <div class="section-title">Импорт / Экспорт</div>
-          <button class="info-btn" data-info="Работает с ShipConfig 0.5.3–0.6. Можно сразу загрузить из AppConfig.">i</button>
+          <div class="section-title">╨Ш╨╝╨┐╨╛╤А╤В / ╨н╨║╤Б╨┐╨╛╤А╤В</div>
+          <button class="info-btn" data-info="╨а╨░╨▒╨╛╤В╨░╨╡╤В ╤Б ShipConfig 0.5.3тАУ0.6. ╨Ь╨╛╨╢╨╜╨╛ ╤Б╤А╨░╨╖╤Г ╨╖╨░╨│╤А╤Г╨╖╨╕╤В╤М ╨╕╨╖ AppConfig.">i</button>
         </div>
         <div class="io-inline">
           <input type="file" id="importFile" accept="application/json" />
           <div class="actions-row">
-            <button class="btn btn-outline btn-small" id="importBtn">Импорт</button>
-            <button class="btn btn-outline btn-small" id="exportBtn">Экспорт</button>
-            <button class="btn btn-ghost btn-small" id="copyJson">Копировать JSON</button>
+            <button class="btn btn-outline btn-small" id="importBtn">╨Ш╨╝╨┐╨╛╤А╤В</button>
+            <button class="btn btn-outline btn-small" id="exportBtn">╨н╨║╤Б╨┐╨╛╤А╤В</button>
+            <button class="btn btn-ghost btn-small" id="copyJson">╨Ъ╨╛╨┐╨╕╤А╨╛╨▓╨░╤В╤М JSON</button>
           </div>
         </div>
       </article>
@@ -82,20 +83,20 @@
       <section class="grid grid--primary">
         <article class="card classification-card">
           <div class="card-toolbar">
-            <div class="section-title">Класс и архетип</div>
+            <div class="section-title">╨Ъ╨╗╨░╤Б╤Б ╨╕ ╨░╤А╤Е╨╡╤В╨╕╨┐</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Размер, тип и stealth влияют на габариты, массу и ассист. Auto size берёт размер из габаритов, архетип — подтягивает пресет.">i</button>
+              <button class="info-btn" data-info="╨а╨░╨╖╨╝╨╡╤А, ╤В╨╕╨┐ ╨╕ stealth ╨▓╨╗╨╕╤П╤О╤В ╨╜╨░ ╨│╨░╨▒╨░╤А╨╕╤В╤Л, ╨╝╨░╤Б╤Б╤Г ╨╕ ╨░╤Б╤Б╨╕╤Б╤В. Auto size ╨▒╨╡╤А╤С╤В ╤А╨░╨╖╨╝╨╡╤А ╨╕╨╖ ╨│╨░╨▒╨░╤А╨╕╤В╨╛╨▓, ╨░╤А╤Е╨╡╤В╨╕╨┐ тАФ ╨┐╨╛╨┤╤В╤П╨│╨╕╨▓╨░╨╡╤В ╨┐╤А╨╡╤Б╨╡╤В.">i</button>
               <button class="btn btn-ghost btn-small" id="autoSizeBtn">Auto size</button>
-              <button class="btn btn-outline btn-small" id="applyPresetBtn">Архетип ассиста</button>
+              <button class="btn btn-outline btn-small" id="applyPresetBtn">╨Р╤А╤Е╨╡╤В╨╕╨┐ ╨░╤Б╤Б╨╕╤Б╤В╨░</button>
             </div>
           </div>
           <div class="field-grid three">
             <label class="field">
-              <span>Размер</span>
+              <span>╨а╨░╨╖╨╝╨╡╤А</span>
               <select id="sizeSelect" data-bind="classification.size"></select>
             </label>
             <label class="field">
-              <span>Тип</span>
+              <span>╨в╨╕╨┐</span>
               <select id="typeSelect" data-bind="classification.type"></select>
             </label>
             <label class="field">
@@ -106,61 +107,61 @@
               </select>
             </label>
           </div>
-          <div class="card-subtitle">Рекомендованный пресет: <span id="suggestedPreset">Balanced</span></div>
+          <div class="card-subtitle">╨а╨╡╨║╨╛╨╝╨╡╨╜╨┤╨╛╨▓╨░╨╜╨╜╤Л╨╣ ╨┐╤А╨╡╤Б╨╡╤В: <span id="suggestedPreset">Balanced</span></div>
         </article>
 
         <article class="card sprite-card">
           <div class="card-toolbar">
-            <div class="section-title">Спрайт корабля</div>
+            <div class="section-title">╨б╨┐╤А╨░╨╣╤В ╨║╨╛╤А╨░╨▒╨╗╤П</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Загрузите PNG/JPG (нос вправо). Scan sprite измеряет bbox по X (длина) и Y (ширина).">i</button>
+              <button class="info-btn" data-info="╨Ч╨░╨│╤А╤Г╨╖╨╕╤В╨╡ PNG/JPG (╨╜╨╛╤Б ╨▓╨┐╤А╨░╨▓╨╛). Scan sprite ╨╕╨╖╨╝╨╡╤А╤П╨╡╤В bbox ╨┐╨╛ X (╨┤╨╗╨╕╨╜╨░) ╨╕ Y (╤И╨╕╤А╨╕╨╜╨░).">i</button>
               <button class="btn btn-ghost btn-small" id="spriteScanBtn">Scan sprite</button>
-              <button class="btn btn-ghost btn-small" id="spriteDetachBtn">Убрать dataUrl</button>
-              <button class="btn btn-ghost btn-small" id="clearSprite">Очистить</button>
+              <button class="btn btn-ghost btn-small" id="spriteDetachBtn">╨г╨▒╤А╨░╤В╤М dataUrl</button>
+              <button class="btn btn-ghost btn-small" id="clearSprite">╨Ю╤З╨╕╤Б╤В╨╕╤В╤М</button>
             </div>
           </div>
           <div class="sprite-preview" id="spritePreview">
-            <span id="spritePlaceholder">Перетащите PNG/JPG или выберите файл</span>
+            <span id="spritePlaceholder">╨Я╨╡╤А╨╡╤В╨░╤Й╨╕╤В╨╡ PNG/JPG ╨╕╨╗╨╕ ╨▓╤Л╨▒╨╡╤А╨╕╤В╨╡ ╤Д╨░╨╣╨╗</span>
           </div>
           <div class="sprite-meta">
-            <span id="spriteInfo">Нет спрайта</span>
+            <span id="spriteInfo">╨Э╨╡╤В ╤Б╨┐╤А╨░╨╣╤В╨░</span>
             <input type="file" id="spriteInput" accept="image/*" />
           </div>
           <label class="field">
-            <span>Путь ассета</span>
+            <span>╨Я╤Г╤В╤М ╨░╤Б╤Б╨╡╤В╨░</span>
             <input type="text" data-bind="media.sprite.path" placeholder="asstets/ships/fighter_top.png" />
           </label>
         </article>
 
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Габариты и масса</div>
+            <div class="section-title">╨У╨░╨▒╨░╤А╨╕╤В╤Л ╨╕ ╨╝╨░╤Б╤Б╨░</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Диаграмма AppConfig: X — длина (нос вправо), Y — ширина. Scan sprite держит эту ориентацию. Auto радиус считает hull_radius, Mass auto — массу.">i</button>
-              <button class="btn btn-ghost btn-small" id="geometryAutoBtn">Auto радиус</button>
-              <button class="btn btn-ghost btn-small" id="massAutoBtn">Auto масса</button>
-              <button class="btn btn-outline btn-small" id="geometryRecommendBtn">Архетип</button>
+              <button class="info-btn" data-info="╨Ф╨╕╨░╨│╤А╨░╨╝╨╝╨░ AppConfig: X тАФ ╨┤╨╗╨╕╨╜╨░ (╨╜╨╛╤Б ╨▓╨┐╤А╨░╨▓╨╛), Y тАФ ╤И╨╕╤А╨╕╨╜╨░. Scan sprite ╨┤╨╡╤А╨╢╨╕╤В ╤Н╤В╤Г ╨╛╤А╨╕╨╡╨╜╤В╨░╤Ж╨╕╤О. Auto ╤А╨░╨┤╨╕╤Г╤Б ╤Б╤З╨╕╤В╨░╨╡╤В hull_radius, Mass auto тАФ ╨╝╨░╤Б╤Б╤Г.">i</button>
+              <button class="btn btn-ghost btn-small" id="geometryAutoBtn">Auto ╤А╨░╨┤╨╕╤Г╤Б</button>
+              <button class="btn btn-ghost btn-small" id="massAutoBtn">Auto ╨╝╨░╤Б╤Б╨░</button>
+              <button class="btn btn-outline btn-small" id="geometryRecommendBtn">╨Р╤А╤Е╨╡╤В╨╕╨┐</button>
             </div>
           </div>
           <div class="field-grid four">
             <label class="field">
-              <span>Длина, м</span>
+              <span>╨Ф╨╗╨╕╨╜╨░, ╨╝</span>
               <input type="number" step="0.1" data-bind="geometry.length_m" />
             </label>
             <label class="field">
-              <span>Ширина, м</span>
+              <span>╨и╨╕╤А╨╕╨╜╨░, ╨╝</span>
               <input type="number" step="0.1" data-bind="geometry.width_m" />
             </label>
             <label class="field">
-              <span>Высота, м</span>
+              <span>╨Т╤Л╤Б╨╛╤В╨░, ╨╝</span>
               <input type="number" step="0.1" data-bind="geometry.height_m" />
             </label>
             <label class="field">
-              <span>Радиус корпуса, м</span>
+              <span>╨а╨░╨┤╨╕╤Г╤Б ╨║╨╛╤А╨┐╤Г╤Б╨░, ╨╝</span>
               <input type="number" step="0.01" data-bind="geometry.hull_radius_m" />
             </label>
             <label class="field">
-              <span>Масса (сухая), т</span>
+              <span>╨Ь╨░╤Б╤Б╨░ (╤Б╤Г╤Е╨░╤П), ╤В</span>
               <input type="number" step="0.1" data-bind="mass.dry_t" />
             </label>
           </div>
@@ -168,10 +169,10 @@
 
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Сигнатуры</div>
+            <div class="section-title">╨б╨╕╨│╨╜╨░╤В╤Г╤А╤Л</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="IR/EM/CS управляют заметностью в AppConfig.">i</button>
-              <button class="btn btn-outline btn-small" id="signaturesRecommendBtn">Архетип</button>
+              <button class="info-btn" data-info="IR/EM/CS ╤Г╨┐╤А╨░╨▓╨╗╤П╤О╤В ╨╖╨░╨╝╨╡╤В╨╜╨╛╤Б╤В╤М╤О ╨▓ AppConfig.">i</button>
+              <button class="btn btn-outline btn-small" id="signaturesRecommendBtn">╨Р╤А╤Е╨╡╤В╨╕╨┐</button>
             </div>
           </div>
           <div class="field-grid three">
@@ -192,16 +193,16 @@
 
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Производительность</div>
+            <div class="section-title">╨Я╤А╨╛╨╕╨╖╨▓╨╛╨┤╨╕╤В╨╡╨╗╤М╨╜╨╛╤Б╤В╤М</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Universe Unlimited использует только ускорения и угловые скорости (без лимита SCM/Vmax). Auto расчёт берёт номиналы архетипа.">i</button>
-              <button class="btn btn-outline btn-small" id="performanceAutoBtn">Auto расчёт</button>
+              <button class="info-btn" data-info="Universe Unlimited ╨╕╤Б╨┐╨╛╨╗╤М╨╖╤Г╨╡╤В ╤В╨╛╨╗╤М╨║╨╛ ╤Г╤Б╨║╨╛╤А╨╡╨╜╨╕╤П ╨╕ ╤Г╨│╨╗╨╛╨▓╤Л╨╡ ╤Б╨║╨╛╤А╨╛╤Б╤В╨╕ (╨▒╨╡╨╖ ╨╗╨╕╨╝╨╕╤В╨░ SCM/Vmax). Auto ╤А╨░╤Б╤З╤С╤В ╨▒╨╡╤А╤С╤В ╨╜╨╛╨╝╨╕╨╜╨░╨╗╤Л ╨░╤А╤Е╨╡╤В╨╕╨┐╨░.">i</button>
+              <button class="btn btn-outline btn-small" id="performanceAutoBtn">Auto ╤А╨░╤Б╤З╤С╤В</button>
             </div>
           </div>
-          <div class="card-subtitle">Ускорения</div>
+          <div class="card-subtitle">╨г╤Б╨║╨╛╤А╨╡╨╜╨╕╤П</div>
           <div class="field-grid three">
             <label class="field">
-              <span>Продольное accel, м/с²</span>
+              <span>╨Я╤А╨╛╨┤╨╛╨╗╤М╨╜╨╛╨╡ accel, ╨╝/╤Б┬▓</span>
               <input type="number" step="0.1" data-bind="performance.accel_fwd_mps2" />
             </label>
             <label class="field">
@@ -217,7 +218,7 @@
               <input type="number" step="0.1" data-bind="performance.strafe_mps2.z" />
             </label>
           </div>
-          <div class="card-subtitle">Угловые скорости</div>
+          <div class="card-subtitle">╨г╨│╨╗╨╛╨▓╤Л╨╡ ╤Б╨║╨╛╤А╨╛╤Б╤В╨╕</div>
           <div class="field-grid three">
             <label class="field">
               <span>Pitch</span>
@@ -236,20 +237,20 @@
 
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Пропульсивная установка</div>
+            <div class="section-title">╨Я╤А╨╛╨┐╤Г╨╗╤М╤Б╨╕╨▓╨╜╨░╤П ╤Г╤Б╤В╨░╨╜╨╛╨▓╨║╨░</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Auto тяга берёт массу и продольное ускорение. Archetype подтягивает номиналы.">i</button>
-              <button class="btn btn-ghost btn-small" id="autoPropulsionBtn">Auto тяга</button>
-              <button class="btn btn-outline btn-small" id="propulsionRecommendBtn">Архетип</button>
+              <button class="info-btn" data-info="Auto ╤В╤П╨│╨░ ╨▒╨╡╤А╤С╤В ╨╝╨░╤Б╤Б╤Г ╨╕ ╨┐╤А╨╛╨┤╨╛╨╗╤М╨╜╨╛╨╡ ╤Г╤Б╨║╨╛╤А╨╡╨╜╨╕╨╡. Archetype ╨┐╨╛╨┤╤В╤П╨│╨╕╨▓╨░╨╡╤В ╨╜╨╛╨╝╨╕╨╜╨░╨╗╤Л.">i</button>
+              <button class="btn btn-ghost btn-small" id="autoPropulsionBtn">Auto ╤В╤П╨│╨░</button>
+              <button class="btn btn-outline btn-small" id="propulsionRecommendBtn">╨Р╤А╤Е╨╡╤В╨╕╨┐</button>
             </div>
           </div>
           <div class="field-grid two">
             <label class="field">
-              <span>Главная тяга, МН</span>
+              <span>╨У╨╗╨░╨▓╨╜╨░╤П ╤В╤П╨│╨░, ╨Ь╨Э</span>
               <input type="number" step="0.01" data-bind="propulsion.main_thrust_MN" />
             </label>
             <label class="field">
-              <span>RCS бюджет, МН</span>
+              <span>RCS ╨▒╤О╨┤╨╢╨╡╤В, ╨Ь╨Э</span>
               <input type="number" step="0.01" data-bind="propulsion.rcs_budget_MN" />
             </label>
           </div>
@@ -257,23 +258,23 @@
 
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Груз и вооружение</div>
+            <div class="section-title">╨У╤А╤Г╨╖ ╨╕ ╨▓╨╛╨╛╤А╤Г╨╢╨╡╨╜╨╕╨╡</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Используйте экипаж и груз согласно ТЗ FlightTest.">i</button>
-              <button class="btn btn-outline btn-small" id="payloadRecommendBtn">Архетип</button>
+              <button class="info-btn" data-info="╨Ш╤Б╨┐╨╛╨╗╤М╨╖╤Г╨╣╤В╨╡ ╤Н╨║╨╕╨┐╨░╨╢ ╨╕ ╨│╤А╤Г╨╖ ╤Б╨╛╨│╨╗╨░╤Б╨╜╨╛ ╨в╨Ч FlightTest.">i</button>
+              <button class="btn btn-outline btn-small" id="payloadRecommendBtn">╨Р╤А╤Е╨╡╤В╨╕╨┐</button>
             </div>
           </div>
           <div class="field-grid three">
             <label class="field">
-              <span>Груз, SCU</span>
+              <span>╨У╤А╤Г╨╖, SCU</span>
               <input type="number" step="1" data-bind="payload.cargo_scu" />
             </label>
             <label class="field">
-              <span>Экипаж</span>
+              <span>╨н╨║╨╕╨┐╨░╨╢</span>
               <input type="text" data-bind="payload.crew" />
             </label>
             <label class="field">
-              <span>Вооружение</span>
+              <span>╨Т╨╛╨╛╤А╤Г╨╢╨╡╨╜╨╕╨╡</span>
               <textarea data-bind="weapons.summary" placeholder="S3 turrets, torpedoes"></textarea>
             </label>
           </div>
@@ -281,9 +282,9 @@
 
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Помощники пилота</div>
+            <div class="section-title">╨Я╨╛╨╝╨╛╤Й╨╜╨╕╨║╨╕ ╨┐╨╕╨╗╨╛╤В╨░</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Preset подбирает handling в стиле архетипа. Значения g ограничиваются динамикой корабля.">i</button>
+              <button class="info-btn" data-info="Preset ╨┐╨╛╨┤╨▒╨╕╤А╨░╨╡╤В handling ╨▓ ╤Б╤В╨╕╨╗╨╡ ╨░╤А╤Е╨╡╤В╨╕╨┐╨░. ╨Ч╨╜╨░╤З╨╡╨╜╨╕╤П g ╨╛╨│╤А╨░╨╜╨╕╤З╨╕╨▓╨░╤О╤В╤Б╤П ╨┤╨╕╨╜╨░╨╝╨╕╨║╨╛╨╣ ╨║╨╛╤А╨░╨▒╨╗╤П.">i</button>
               <button class="btn btn-outline btn-small" id="assistAutoBtn">Auto</button>
             </div>
           </div>
@@ -373,13 +374,13 @@
               <input type="number" step="0.01" data-bind="assist.handling.lat_authority" />
             </label>
             <label class="field">
-              <span>jerk forward (m/s³)</span>
+              <span>jerk forward (m/s┬│)</span>
               <input type="number" step="1" data-bind="assist.jerk.forward_mps3" />
             </label>
           </div>
           <div class="field-grid three">
             <label class="field">
-              <span>jerk lateral (m/s³)</span>
+              <span>jerk lateral (m/s┬│)</span>
               <input type="number" step="1" data-bind="assist.jerk.lateral_mps3" />
             </label>
             <label class="field">
@@ -429,10 +430,10 @@
 
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Инерция и питание</div>
+            <div class="section-title">╨Ш╨╜╨╡╤А╤Ж╨╕╤П ╨╕ ╨┐╨╕╤В╨░╨╜╨╕╨╡</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Auto расчёт считает моменты инерции блока и оценивает реактор/охлаждение.">i</button>
-              <button class="btn btn-ghost btn-small" id="inertiaAutoBtn">Auto расчёт</button>
+              <button class="info-btn" data-info="Auto ╤А╨░╤Б╤З╤С╤В ╤Б╤З╨╕╤В╨░╨╡╤В ╨╝╨╛╨╝╨╡╨╜╤В╤Л ╨╕╨╜╨╡╤А╤Ж╨╕╨╕ ╨▒╨╗╨╛╨║╨░ ╨╕ ╨╛╤Ж╨╡╨╜╨╕╨▓╨░╨╡╤В ╤А╨╡╨░╨║╤В╨╛╤А/╨╛╤Е╨╗╨░╨╢╨┤╨╡╨╜╨╕╨╡.">i</button>
+              <button class="btn btn-ghost btn-small" id="inertiaAutoBtn">Auto ╤А╨░╤Б╤З╤С╤В</button>
             </div>
           </div>
           <div class="field-grid three">
@@ -451,11 +452,11 @@
           </div>
           <div class="field-grid two">
             <label class="field">
-              <span>Реактор, МВт</span>
+              <span>╨а╨╡╨░╨║╤В╨╛╤А, ╨Ь╨Т╤В</span>
               <input type="number" step="0.1" data-bind="power_opt.reactor_MW" />
             </label>
             <label class="field">
-              <span>Охлаждение, МВт</span>
+              <span>╨Ю╤Е╨╗╨░╨╢╨┤╨╡╨╜╨╕╨╡, ╨Ь╨Т╤В</span>
               <input type="number" step="0.1" data-bind="power_opt.cooling_MW" />
             </label>
           </div>
@@ -463,10 +464,10 @@
 
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Хардпоинты и заметки</div>
+            <div class="section-title">╨е╨░╤А╨┤╨┐╨╛╨╕╨╜╤В╤Л ╨╕ ╨╖╨░╨╝╨╡╤В╨║╨╕</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Списки точек оружия попадают в AppConfig. Архетип может предложить типичную схему.">i</button>
-              <button class="btn btn-outline btn-small" id="hardpointsRecommendBtn">Архетип</button>
+              <button class="info-btn" data-info="╨б╨┐╨╕╤Б╨║╨╕ ╤В╨╛╤З╨╡╨║ ╨╛╤А╤Г╨╢╨╕╤П ╨┐╨╛╨┐╨░╨┤╨░╤О╤В ╨▓ AppConfig. ╨Р╤А╤Е╨╡╤В╨╕╨┐ ╨╝╨╛╨╢╨╡╤В ╨┐╤А╨╡╨┤╨╗╨╛╨╢╨╕╤В╤М ╤В╨╕╨┐╨╕╤З╨╜╤Г╤О ╤Б╤Е╨╡╨╝╤Г.">i</button>
+              <button class="btn btn-outline btn-small" id="hardpointsRecommendBtn">╨Р╤А╤Е╨╡╤В╨╕╨┐</button>
             </div>
           </div>
           <div class="field-grid two">
@@ -489,7 +490,7 @@
           </div>
           <label class="field">
             <span>Notes</span>
-            <textarea data-bind="notes_opt" placeholder="Особенности, ограничения, комплектации"></textarea>
+            <textarea data-bind="notes_opt" placeholder="╨Ю╤Б╨╛╨▒╨╡╨╜╨╜╨╛╤Б╤В╨╕, ╨╛╨│╤А╨░╨╜╨╕╤З╨╡╨╜╨╕╤П, ╨║╨╛╨╝╨┐╨╗╨╡╨║╤В╨░╤Ж╨╕╨╕"></textarea>
           </label>
         </article>
       </section>
@@ -497,21 +498,21 @@
       <section class="grid grid--secondary">
         <article class="card">
           <div class="card-toolbar">
-            <div class="section-title">Рекомендации</div>
+            <div class="section-title">╨а╨╡╨║╨╛╨╝╨╡╨╜╨┤╨░╤Ж╨╕╨╕</div>
             <div class="card-tools">
-              <button class="info-btn" data-info="Список подсказок сверяется с архетипами и физикой. Apply правит только указанные поля.">i</button>
+              <button class="info-btn" data-info="╨б╨┐╨╕╤Б╨╛╨║ ╨┐╨╛╨┤╤Б╨║╨░╨╖╨╛╨║ ╤Б╨▓╨╡╤А╤П╨╡╤В╤Б╤П ╤Б ╨░╤А╤Е╨╡╤В╨╕╨┐╨░╨╝╨╕ ╨╕ ╤Д╨╕╨╖╨╕╨║╨╛╨╣. Apply ╨┐╤А╨░╨▓╨╕╤В ╤В╨╛╨╗╤М╨║╨╛ ╤Г╨║╨░╨╖╨░╨╜╨╜╤Л╨╡ ╨┐╨╛╨╗╤П.">i</button>
               <button class="btn btn-outline btn-small" id="applyAllRecommendations">Apply all</button>
-              <button class="btn btn-ghost btn-small" id="refreshRecommendations">Обновить</button>
+              <button class="btn btn-ghost btn-small" id="refreshRecommendations">╨Ю╨▒╨╜╨╛╨▓╨╕╤В╤М</button>
             </div>
           </div>
           <div class="recommendations" id="recommendationsList">
-            <div class="recommendations-empty">Нет несоответствий архетипу</div>
+            <div class="recommendations-empty">╨Э╨╡╤В ╨╜╨╡╤Б╨╛╨╛╤В╨▓╨╡╤В╤Б╤В╨▓╨╕╨╣ ╨░╤А╤Е╨╡╤В╨╕╨┐╤Г</div>
           </div>
         </article>
 
         <article class="card log-card">
           <div class="card-toolbar">
-            <div class="section-title">Лог действий</div>
+            <div class="section-title">╨Ы╨╛╨│ ╨┤╨╡╨╣╤Б╤В╨▓╨╕╨╣</div>
           </div>
           <div class="status-log" id="statusLog"></div>
         </article>
@@ -519,7 +520,7 @@
         <article class="card json-card">
           <div class="card-toolbar">
             <div class="section-title">ShipConfig JSON</div>
-            <button class="btn btn-ghost btn-small" id="toggleJson">Показать JSON</button>
+            <button class="btn btn-ghost btn-small" id="toggleJson">╨Я╨╛╨║╨░╨╖╨░╤В╤М JSON</button>
           </div>
           <div class="json-preview" id="jsonPanel">
             <pre id="out"></pre>
@@ -530,10 +531,21 @@
   </div>
 
   <div id="infoPopover" class="info-popover hidden">
-    <button id="infoClose" class="info-popover__close">×</button>
+    <button id="infoClose" class="info-popover__close">├Ч</button>
     <p id="infoText"></p>
   </div>
 
   <script type="module" src="./js/app.js"></script>
+  <script>
+    (function () {
+      const info = (typeof window !== "undefined" && window.U2BuildInfo) || {
+        version: "0.7.4",
+        buildId: "000",
+        label: "v0.7.4 build 000"
+      };
+      document.title = `U2 Ship Architect · ${info.label}`;
+      document.querySelectorAll("[data-build-label]").forEach((node) => (node.textContent = info.label));
+    })();
+  </script>
 </body>
 </html>

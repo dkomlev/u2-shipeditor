@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>U2 FlightTest v0.6.4</title>
+  <title>U2 FlightTest</title>
   <style>
     * {
       margin: 0;
@@ -121,12 +121,33 @@
       100% { transform: rotate(360deg); }
     }
   </style>
+  <script src="js/lib/build-info.js"></script>
+  <script>
+    (function () {
+      const info = (typeof window !== "undefined" && window.U2BuildInfo) || null;
+      if (info && info.label) {
+        document.title = `U2 FlightTest ${info.label}`;
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="loading">
     <div class="spinner"></div>
-    <span>Loading FlightTest v0.6.4...</span>
+    <span id="loadingStatus">Loading FlightTest...</span>
   </div>
+  <script>
+    (function () {
+      const info = (typeof window !== "undefined" && window.U2BuildInfo) || {};
+      const buildId = info.buildId || (typeof info.build === "number" ? info.build.toString().padStart(3, "0") : "000");
+      const version = info.version || "0.0.0";
+      const label = info.label || `v${version} build ${buildId}`;
+      const el = document.getElementById("loadingStatus");
+      if (el) {
+        el.textContent = `Loading FlightTest ${label}...`;
+      }
+    })();
+  </script>
 
   <canvas id="gameCanvas"></canvas>
 
@@ -155,6 +176,7 @@
   <script src="js/lib/app-config-loader.js"></script>
   <script src="js/lib/ship-adapter.js"></script>
   <script src="js/lib/resources.js"></script>
+  <script src="js/sim/relativity.js"></script>
   <script src="js/sim/core.js"></script>
   <script src="js/sim/input.js"></script>
   <script src="js/sim/coupled-controller.js"></script>
@@ -163,8 +185,17 @@
   <script src="js/sim/collision.js"></script>
   <script>
     (async function () {
+      const buildInfo = (typeof window !== "undefined" && window.U2BuildInfo) || {
+        version: "0.0.0",
+        build: 0,
+        buildId: "000",
+        label: "v0.0.0 build 000"
+      };
+      const APP_VERSION = buildInfo.version || "0.0.0";
+      const BUILD_NUMBER = buildInfo.buildId || (typeof buildInfo.build === "number" ? buildInfo.build.toString().padStart(3, "0") : "000");
+      const BUILD_LABEL = buildInfo.label || `v${APP_VERSION} build ${BUILD_NUMBER}`;
       try {
-        console.log("FlightTest: Starting initialization...");
+        console.log(`FlightTest ${BUILD_LABEL}: Starting initialization...`);
       
         const appConfigLoader = window.U2AppConfigLoader;
         const resources = window.U2Resources;
@@ -499,7 +530,8 @@
           Asteroids: ${asteroids.length} / ${config.asteroids.count}<br>
           Collisions: <span class="${collisionClass}">${collisionMode}${collisions.length > 0 ? ` (${collisions.length})` : ''}</span><br>
           Overlay: ${collisionOverlay ? "ON (F3)" : "OFF (F3)"}<br>
-          World: ${(config.world.bounds.width / 1000).toFixed(0)} × ${(config.world.bounds.height / 1000).toFixed(0)} km
+          World: ${(config.world.bounds.width / 1000).toFixed(0)} × ${(config.world.bounds.height / 1000).toFixed(0)} km<br>
+          <span style="opacity: 0.6; font-size: 11px;">${BUILD_LABEL}</span>
         `;
       }
       

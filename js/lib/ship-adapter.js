@@ -1,10 +1,10 @@
-(function (root, factory) {
+﻿(function (root, factory) {
   if (typeof module === "object" && module.exports) {
     module.exports = factory();
   } else {
     root.U2ShipAdapter = factory();
   }
-})(typeof self !== "undefined" ? self : this, function () {
+})(typeof self !== "undefined" ? self : (typeof globalThis !== "undefined" ? globalThis : this), function () {
   "use strict";
 
   const PRESET_RECOMMENDATIONS = {
@@ -102,6 +102,15 @@
     }
   };
 
+  const RCS_RATIO = { snub: 0.3, small: 0.3, medium: 0.3, heavy: 0.2, capital: 0.2 };
+  const DEFAULT_OMEGA_CAP = {
+    snub: { pitch: 90, yaw: 90, roll: 140 },
+    small: { pitch: 70, yaw: 70, roll: 120 },
+    medium: { pitch: 40, yaw: 40, roll: 80 },
+    heavy: { pitch: 25, yaw: 16, roll: 25 },
+    capital: { pitch: 18, yaw: 12, roll: 20 }
+  };
+
   function parseShipConfig(config, sourcePath = "unknown") {
     const version = detectVersion(config);
     return version.startsWith("0.6") ? mapV06(config, sourcePath) : mapV053(config, sourcePath);
@@ -122,15 +131,33 @@
     const size = config.classification?.size || "small";
     const type = config.classification?.type || "fighter";
     const sizeType = config.classification?.size_type || `${size} ${type}`.trim();
+    const sizeKey = size.toLowerCase();
     const preset = config.assist?.preset || recommendPreset(sizeType);
     const assistProfile = buildAssistProfile(config, preset);
 
-    const accel = extractAccel(config.performance);
-    const mainDrive = config.propulsion?.main_drive;
-    const thrustToWeight = computeThrustToWeight(mainDrive?.max_thrust_kN, config.mass?.dry_t);
+    const performance = config.performance || {};
+    const accel = extractAccel(performance);
+    const strafeVector = resolveStrafe(performance, accel.lateral);
+    const omegaCaps = resolveOmegaCaps(performance, sizeKey);
+    const mainThrustMN = resolveMainThrustMN(config.propulsion, config.mass?.dry_t, accel.forward);
+    const thrustToWeight = computeThrustToWeight(
+      config.propulsion?.main_drive?.max_thrust_kN ?? (typeof mainThrustMN === "number" ? mainThrustMN * 1000 : null),
+      config.mass?.dry_t
+    );
+
+    const propulsion = {
+      ...config.propulsion,
+      main_thrust_MN: config.propulsion?.main_thrust_MN ?? mainThrustMN,
+      rcs_budget_MN:
+        config.propulsion?.rcs_budget_MN ??
+        (typeof mainThrustMN === "number"
+          ? Number((mainThrustMN * (RCS_RATIO[sizeKey] ?? 0.25)).toFixed(3))
+          : null)
+    };
+
     return {
       id: config.meta?.id || config.meta?.name || "ship",
-      name: config.meta?.name || "Без имени",
+      name: config.meta?.name || "Unnamed ship",
       version: config.meta?.version || "0.6",
       size,
       type,
@@ -140,15 +167,17 @@
       mass_t: config.mass?.dry_t ?? null,
       forward_accel_mps2: accel.forward,
       lateral_accel_mps2: accel.lateral,
+      strafe_mps2: strafeVector,
       thrust_to_weight: thrustToWeight,
-      angular_dps: config.performance?.angular_dps ?? null,
+      angular_dps: omegaCaps,
       performanceHint: buildPerformanceHint(accel),
       sprite: resolveSprite(config.media?.sprite, sourcePath),
-      power_MW: mainDrive?.max_power_MW ?? config.power_opt?.reactor_MW ?? null,
+      power_MW: config.propulsion?.main_drive?.max_power_MW ?? config.power_opt?.reactor_MW ?? null,
       tags: Array.isArray(config.tags) ? config.tags : [],
-      sourceLabel: sourcePath?.startsWith("local:")
-        ? "Импортированный JSON"
-        : `Файл: ${sourcePath || "—"}`,
+      sourceLabel: sourcePath?.startsWith("local:") ? "Local JSON" : `File: ${sourcePath || "unknown"}`,
+      geometry: config.geometry ?? null,
+      inertia_opt: config.inertia_opt ?? null,
+      propulsion,
       assist: assistProfile,
       assist_profile: assistProfile.handling_style,
       assist_slip_limit_deg: assistProfile.handling?.slip_limit_deg ?? null,
@@ -159,7 +188,6 @@
       assist_turn_authority: assistProfile.handling?.turn_authority ?? null
     };
   }
-
   function mapV053(config, sourcePath) {
     const className = (config.meta?.class || config.meta?.name || "medium freighter").toLowerCase();
     const parts = className.split(/\s+/);
@@ -197,8 +225,8 @@
       power_MW: config.power_opt?.reactor_MW ?? null,
       tags: Array.isArray(config.tags) ? config.tags : [size, typePhrase],
       sourceLabel: sourcePath?.startsWith("local:")
-        ? "Импортированный JSON (v0.5.3)"
-        : `Legacy: ${sourcePath || "—"}`,
+        ? "РРјРїРѕСЂС‚РёСЂРѕРІР°РЅРЅС‹Р№ JSON (v0.5.3)"
+        : `Legacy: ${sourcePath || "вЂ”"}`,
       assist: assistProfile,
       assist_profile: assistProfile.handling_style,
       assist_slip_limit_deg: assistProfile.handling?.slip_limit_deg ?? null,
@@ -248,6 +276,46 @@
     };
   }
 
+  function resolveStrafe(perf, fallback) {
+    if (perf?.strafe_mps2) {
+      return {
+        x: perf.strafe_mps2.x ?? fallback ?? null,
+        y: perf.strafe_mps2.y ?? fallback ?? null,
+        z: perf.strafe_mps2.z ?? fallback ?? null
+      };
+    }
+    if (typeof fallback === "number") {
+      return { x: fallback, y: fallback, z: fallback };
+    }
+    return null;
+  }
+
+  function resolveOmegaCaps(perf, size) {
+    const caps = perf?.omega_cap_dps || perf?.angular_dps;
+    if (caps) {
+      return {
+        pitch: caps.pitch ?? caps.yaw ?? caps.roll ?? null,
+        yaw: caps.yaw ?? caps.pitch ?? caps.roll ?? null,
+        roll: caps.roll ?? caps.pitch ?? caps.yaw ?? null
+      };
+    }
+    const defaults = DEFAULT_OMEGA_CAP[size] || DEFAULT_OMEGA_CAP.medium;
+    return { ...defaults };
+  }
+
+  function resolveMainThrustMN(propulsion = {}, mass_t, accelForward) {
+    if (typeof propulsion.main_thrust_MN === "number") {
+      return propulsion.main_thrust_MN;
+    }
+    if (typeof propulsion.main_drive?.max_thrust_kN === "number") {
+      return Number((propulsion.main_drive.max_thrust_kN / 1000).toFixed(3));
+    }
+    if (mass_t && typeof accelForward === "number") {
+      return Number(((mass_t * accelForward) / 1000).toFixed(3));
+    }
+    return null;
+  }
+
   function computeThrustToWeight(maxThrust_kN, mass_t) {
     if (!maxThrust_kN || !mass_t) {
       return null;
@@ -264,9 +332,9 @@
     if (!accel) {
       return null;
     }
-    const forward = typeof accel.forward === "number" ? `${accel.forward.toFixed(0)} м/с² fwd` : null;
-    const lateral = typeof accel.lateral === "number" ? `${accel.lateral.toFixed(0)} м/с² lat` : null;
-    return [forward, lateral].filter(Boolean).join(" · ") || null;
+    const forward = typeof accel.forward === "number" ? `${accel.forward.toFixed(0)} Рј/СЃВІ fwd` : null;
+    const lateral = typeof accel.lateral === "number" ? `${accel.lateral.toFixed(0)} Рј/СЃВІ lat` : null;
+    return [forward, lateral].filter(Boolean).join(" В· ") || null;
   }
 
   function toAngularFromRcs(rcs) {
@@ -356,3 +424,4 @@
     recommendPreset
   };
 });
+

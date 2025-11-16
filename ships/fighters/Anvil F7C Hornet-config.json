@@ -48,11 +48,16 @@
       "yaw": null,
       "roll": null
     },
-    "accel_fwd_mps2": 80,
+    "accel_fwd_mps2": 70,
     "strafe_mps2": {
-      "x": 80,
-      "y": 80,
-      "z": 80
+      "x": 70,
+      "y": 70,
+      "z": 70
+    },
+    "omega_cap_dps": {
+      "pitch": 105,
+      "yaw": 95,
+      "roll": 140
     }
   },
   "propulsion": {
@@ -70,8 +75,8 @@
       "yaw_kNm": 602,
       "roll_kNm": 321
     },
-    "main_thrust_MN": 5.76,
-    "rcs_budget_MN": 1.73
+    "main_thrust_MN": 5.04,
+    "rcs_budget_MN": 1.512
   },
   "power_opt": {
     "reactor_MW": 25.2,
