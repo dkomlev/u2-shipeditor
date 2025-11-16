@@ -8,8 +8,28 @@
     console.error("U2AppConfig is not loaded. Include js/lib/appconfig.js before js/app-config.js");
     return;
   }
-  const clone = AppConfigLib.clone;
-  const mergeDeep = AppConfigLib.mergeDeep;
+  const clone =
+    AppConfigLib.clone ||
+    (typeof structuredClone === "function"
+      ? (value) => structuredClone(value)
+      : (value) => JSON.parse(JSON.stringify(value)));
+  const mergeDeep =
+    AppConfigLib.mergeDeep ||
+    function mergeDeep(target, source) {
+      if (typeof target !== "object" || typeof source !== "object" || !target || !source) {
+        return source;
+      }
+      Object.keys(source).forEach((key) => {
+        if (Array.isArray(source[key])) {
+          target[key] = source[key].slice();
+        } else if (typeof source[key] === "object" && source[key] !== null) {
+          target[key] = mergeDeep(target[key] || {}, source[key]);
+        } else {
+          target[key] = source[key];
+        }
+      });
+      return target;
+    };
   let SECTION_DEFS = AppConfigLib.SECTION_DEFS;
   const DEFAULT_CONFIG = AppConfigLib.createDefaultConfig();
   const STORAGE_KEY = "u2.appConfig";
@@ -619,22 +639,6 @@
       console.warn("AppConfig поврежден, откат к дефолту", error);
       state.config = clone(DEFAULT_CONFIG);
     }
-  }
-
-  function mergeDeep(target, source) {
-    if (typeof target !== "object" || typeof source !== "object" || !target || !source) {
-      return source;
-    }
-    Object.keys(source).forEach((key) => {
-      if (Array.isArray(source[key])) {
-        target[key] = source[key].slice();
-      } else if (typeof source[key] === "object" && source[key] !== null) {
-        target[key] = mergeDeep(target[key] || {}, source[key]);
-      } else {
-        target[key] = source[key];
-      }
-    });
-    return target;
   }
 
   function resetCurrentSection() {

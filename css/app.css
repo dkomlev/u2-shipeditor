@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&subset=cyrillic");
+
 :root {
   color-scheme: dark;
   --bg: radial-gradient(circle at 20% 20%, #0b1b3a, #040915 65%);
@@ -24,7 +26,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Space Grotesk', 'Segoe UI', 'Roboto', sans-serif;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
   background: var(--bg);
   color: var(--text-main);
   padding: 32px;
