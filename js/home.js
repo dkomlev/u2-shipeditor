@@ -475,6 +475,9 @@
     } finally {
       dom.launchBtn?.classList.remove("is-busy");
     }
+
+  }
+
   function buildFlightTestAppConfig(selection) {
     const { summary, sourceKind, sourcePath, raw } = selection;
     const shipReference =
