@@ -55,6 +55,11 @@
       "x": 85,
       "y": 85,
       "z": 85
+    },
+    "omega_cap_dps": {
+      "pitch": 95,
+      "yaw": 80,
+      "roll": 130
     }
   },
   "propulsion": {

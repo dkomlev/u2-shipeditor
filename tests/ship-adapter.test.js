@@ -2,7 +2,10 @@
 
 const path = require("path");
 const fs = require("fs");
-const adapter = require("../js/lib/ship-adapter.js");
+let adapter = require("../js/lib/ship-adapter.js");
+if (!adapter || typeof adapter.parseShipConfig !== "function") {
+  adapter = (globalThis && globalThis.U2ShipAdapter) || adapter || {};
+}
 
 function loadJson(relPath) {
   const fullPath = path.join(__dirname, "..", relPath);

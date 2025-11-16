@@ -53,6 +53,11 @@
       "x": 25,
       "y": 25,
       "z": 25
+    },
+    "omega_cap_dps": {
+      "pitch": 25,
+      "yaw": 16,
+      "roll": 25
     }
   },
   "propulsion": {
@@ -70,8 +75,8 @@
       "yaw_kNm": 177450,
       "roll_kNm": 266200
     },
-    "main_thrust_MN": 58.48,
-    "rcs_budget_MN": 11.7
+    "main_thrust_MN": 58.475,
+    "rcs_budget_MN": 11.695
   },
   "power_opt": {
     "reactor_MW": 818.6,

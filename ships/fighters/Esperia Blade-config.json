@@ -53,6 +53,11 @@
       "x": 80,
       "y": 80,
       "z": 80
+    },
+    "omega_cap_dps": {
+      "pitch": 90,
+      "yaw": 75,
+      "roll": 120
     }
   },
   "propulsion": {
@@ -71,7 +76,7 @@
       "roll_kNm": 377
     },
     "main_thrust_MN": 1.84,
-    "rcs_budget_MN": 0.55
+    "rcs_budget_MN": 0.552
   },
   "power_opt": {
     "reactor_MW": 8,

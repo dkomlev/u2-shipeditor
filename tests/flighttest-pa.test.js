@@ -5,7 +5,10 @@ const fs = require("fs");
 const path = require("path");
 const core = require("../js/sim/core.js");
 const pilotAssist = require("../js/sim/pilot-assist.js");
-const shipAdapter = require("../js/lib/ship-adapter.js");
+let shipAdapter = require("../js/lib/ship-adapter.js");
+if (!shipAdapter || typeof shipAdapter.parseShipConfig !== "function") {
+  shipAdapter = (globalThis && globalThis.U2ShipAdapter) || shipAdapter || {};
+}
 
 const ROOT = path.resolve(__dirname, "..");
 const SHIP_PATH = path.join(ROOT, "ships", "fighter", "small fighter 06-config.json");

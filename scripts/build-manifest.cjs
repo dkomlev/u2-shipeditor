@@ -2,7 +2,10 @@
 
 const fs = require("fs");
 const path = require("path");
-const shipAdapter = require("../js/lib/ship-adapter.js");
+let shipAdapter = require("../js/lib/ship-adapter.js");
+if (!shipAdapter || typeof shipAdapter.parseShipConfig !== "function") {
+  shipAdapter = (globalThis && globalThis.U2ShipAdapter) || shipAdapter || {};
+}
 
 const ROOT = path.resolve(__dirname, "..");
 const SHIPS_DIR = path.join(ROOT, "ships");
