@@ -9,10 +9,10 @@
 })(typeof self !== "undefined" ? self : this, function () {
   const buildInfo = {
     version: "0.7.5",
-    build: 2,
-    buildId: "002",
-    label: "v0.7.5 build 002",
-    updatedAt: "2025-11-16T10:00:00.000Z"
+    build: 3,
+    buildId: "003",
+    label: "v0.7.5 build 003",
+    updatedAt: "2025-11-16T18:32:55.783Z"
   };
 
   buildInfo.toString = function toString() {

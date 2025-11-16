@@ -384,7 +384,12 @@
       });
       console.log("State created:", state);
 
-      const input = inputLib.createInputController();
+      const autopilotStart = appConfig.autopilot?.enabled_on_start ?? true;
+      const coupledStart = appConfig.autopilot?.coupled_on_start ?? true;
+      const input = inputLib.createInputController(appConfig.input, {
+        autopilotEnabled: autopilotStart,
+        coupled: coupledStart
+      });
       const assist = assistLib.createPilotAssist(summary);
       console.log("Input and assist controllers created");
 
@@ -398,8 +403,7 @@
       let collisionOverlay = appConfig.collision.overlay; // boolean
 
       // Note: Input controller manages its own coupled/autopilot state internally
-      // Initial values: coupled=true, autopilot=false (now disabled by default to prevent drift)
-      console.log("Input controller configured: coupled=true, autopilot=false");
+      console.log(`Input controller configured: coupled=${coupledStart}, autopilot=${autopilotStart}`);
 
       // Additional key bindings for FlightTest
       document.addEventListener("keydown", (e) => {

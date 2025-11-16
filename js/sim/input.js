@@ -20,15 +20,17 @@
     toggle_random_autopilot: ["r", "keyr"]
   };
 
-  function createInputController(appConfigInput = {}) {
+  function createInputController(appConfigInput = {}, options = {}) {
     const bindings = normalizeBindings(appConfigInput.bindings || {});
     const pointerEnabled = appConfigInput.pointerEnabled === true;
     const keyState = new Set();
     let pointerVector = { x: 0, y: 0 };
     let pointerActive = false;
+    const coupledDefault = options.coupled ?? true;
+    const autopilotDefault = options.autopilotEnabled ?? true;
     const state = {
-      coupled: true,
-      autopilot: false  // Default to manual control (toggle with R key)
+      coupled: coupledDefault,
+      autopilot: autopilotDefault  // Start in autopilot; toggle with R or disable on manual input
     };
 
     function handleKeyDown(event) {
@@ -111,10 +113,6 @@
       };
     }
 
-    function normalizeKey(value) {
-      return typeof value === "string" ? value.trim().toLowerCase() : "";
-    }
-
     function matchesBinding(bindingList, key, code) {
       if (!bindingList || !bindingList.length) {
         return false;
@@ -133,6 +131,12 @@
       handleKeyUp,
       handlePointerMove,
       handlePointerEnd,
+      setAutopilot(value) {
+        state.autopilot = !!value;
+      },
+      setCoupled(value) {
+        state.coupled = !!value;
+      },
       update
     };
   }
@@ -157,6 +161,10 @@
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
+  }
+
+  function normalizeKey(value) {
+    return typeof value === "string" ? value.trim().toLowerCase() : "";
   }
 
   return {

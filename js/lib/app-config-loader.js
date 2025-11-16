@@ -105,7 +105,7 @@
       velocity_max: 50
     },
     autopilot: {
-      enabled_on_start: false,
+      enabled_on_start: true,
       coupled_on_start: true,
       dampeners: true
     },
