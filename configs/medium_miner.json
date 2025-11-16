@@ -1,23 +1,23 @@
 {
   "meta": {
-    "id": "u2_medium_miner_001",
-    "name": "Medium Miner Mk.I",
+    "id": "u2_crusader_c2_hercules_starlifter",
+    "name": "Crusader C2 Hercules Starlifter",
     "version": "0.6.0"
   },
   "classification": {
-    "size": "medium",
-    "type": "miner",
-    "size_type": "medium miner",
+    "size": "heavy",
+    "type": "freighter",
+    "size_type": "heavy freighter",
     "stealth": "standard",
     "variant": null
   },
   "geometry": {
-    "length_m": 38,
-    "width_m": 30,
-    "height_m": 12
+    "length_m": 60,
+    "width_m": 40,
+    "height_m": 15
   },
   "mass": {
-    "dry_t": 160
+    "dry_t": 400
   },
   "signatures": {
     "IR": 3,
@@ -25,26 +25,26 @@
     "CS": 3
   },
   "performance": {
-    "scm_mps": 160,
-    "vmax_mps": 900,
-    "accel_fwd_mps2": 35,
+    "scm_mps": 120,
+    "vmax_mps": 700,
+    "accel_fwd_mps2": 20,
     "strafe_mps2": {
-      "x": 40,
-      "y": 40,
-      "z": 40
+      "x": 25,
+      "y": 25,
+      "z": 25
     },
     "angular_dps": {
-      "pitch": 45,
-      "yaw": 40,
-      "roll": 75
+      "pitch": 4.5,
+      "yaw": 4,
+      "roll": 7.5
     }
   },
   "propulsion": {
-    "main_thrust_MN": 5.6,
-    "rcs_budget_MN": 1.8
+    "main_thrust_MN": 80,
+    "rcs_budget_MN": 2.5
   },
   "payload": {
-    "cargo_scu": 96,
+    "cargo_scu": 150,
     "crew": "2-3"
   },
   "weapons": {
@@ -52,14 +52,33 @@
   },
   "assist": {
     "preset": "Industrial",
-    "slip_lim_deg": 10,
-    "stab_gain": 0.92,
-    "oversteer_bias": -0.15,
-    "cap_main_coupled": 0.65,
-    "speed_limiter_ratio": 0.65,
-    "brake_g_sustain": 3.5,
-    "brake_g_boost": 5.5,
-    "boost_duration_s": 4.0,
-    "boost_cooldown_s": 18.0
+    "handling_style": "Balanced",
+    "speed_limiter_ratio": 0.7,
+    "handling": {
+      "stab_gain": 0.92,
+      "stab_damping": 1.3,
+      "slip_threshold_deg": 8,
+      "slip_limit_deg": 12,
+      "slip_correction_gain": 1.0,
+      "nose_follow_input": 0.35,
+      "anticipation_gain": 0.08,
+      "oversteer_bias": -0.15,
+      "bias": -0.05,
+      "responsiveness": 0.8,
+      "slip_target_max": 12,
+      "traction_control": 0.55,
+      "cap_main_coupled": 0.6,
+      "lat_authority": 0.8
+    },
+    "jerk": {
+      "forward_mps3": 150,
+      "lateral_mps3": 120
+    },
+    "brake": {
+      "g_sustain": 3.5,
+      "g_boost": 5.5,
+      "boost_duration_s": 4.0,
+      "boost_cooldown_s": 18.0
+    }
   }
 }

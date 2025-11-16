@@ -1,24 +1,26 @@
-"use strict";
+﻿"use strict";
 
 (function () {
   const STORAGE_KEY = "u2.selectedShip";
-  const MANIFEST_PATH = "ships/manifest.json";
-
-  const PRESET_RECOMMENDATIONS = {
-    "snub fighter": "Sport",
-    "small fighter": "Sport",
-    "medium fighter": "Muscle",
-    "heavy fighter": "Muscle",
-    "medium freighter": "Truck",
-    "heavy freighter": "Truck",
-    "capital freighter": "Hauler",
-    default: "Sport"
-  };
+  const PRESETS = ["Balanced", "Sport", "Rally", "Muscle", "F1", "Industrial", "Truck", "Warship", "Liner", "Recon"];
+  const SHIP_ADAPTER =
+    (typeof window !== "undefined" && window.U2ShipAdapter) ||
+    (typeof globalThis !== "undefined" && globalThis.U2ShipAdapter);
+  if (!SHIP_ADAPTER) {
+    console.error("U2ShipAdapter is not loaded. Ensure js/lib/ship-adapter.js is included.");
+  }
+  const RESOURCE_SERVICE =
+    (typeof window !== "undefined" && window.U2Resources) ||
+    (typeof globalThis !== "undefined" && globalThis.U2Resources);
+  if (!RESOURCE_SERVICE) {
+    console.error("U2Resources is not loaded. Ensure js/lib/resources.js is included.");
+  }
 
   const state = {
     current: null,
     toastTimer: null,
-    manifest: []
+    manifest: [],
+    assistOverride: null
   };
 
   const cache = new Map();
@@ -36,7 +38,6 @@
     cacheDom();
     bindEvents();
     await loadManifest();
-    await prefetchManifestShips();
     try {
       await restoreSelection();
     } catch (error) {
@@ -44,38 +45,6 @@
       showStatus("Не удалось восстановить выбор. Загружаем случайный корабль.", true);
       await loadRandomShip();
     }
-  }
-
-  async function loadManifest() {
-    try {
-      const response = await fetch(MANIFEST_PATH, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`manifest status ${response.status}`);
-      }
-      const list = await response.json();
-      state.manifest = Array.isArray(list) ? list : [];
-      if (!state.manifest.length) {
-        showStatus("В каталоге ships нет конфигов.", true);
-      }
-    } catch (error) {
-      console.error("manifest error", error);
-      state.manifest = [];
-      showStatus("Не удалось загрузить список кораблей.", true);
-    }
-  }
-
-  async function prefetchManifestShips() {
-    if (!state.manifest.length) {
-      return;
-    }
-    await Promise.all(
-      state.manifest.map((entry) =>
-        fetchShip(entry.path).catch((error) => {
-          console.warn("prefetch failed", entry.path, error);
-          return null;
-        })
-      )
-    );
   }
 
   function cacheDom() {
@@ -91,6 +60,12 @@
     dom.shipPickerModal = document.getElementById("shipPickerModal");
     dom.pickerList = document.getElementById("pickerList");
     dom.pickerImport = document.getElementById("pickerImport");
+    dom.assistOverrideSelect = document.getElementById("assistOverrideSelect");
+    dom.assistOverrideStatus = document.querySelector('[data-field="assist-override-status"]');
+    if (dom.assistOverrideSelect && dom.assistOverrideSelect.options.length <= 1) {
+      PRESETS.forEach((preset) => dom.assistOverrideSelect.add(new Option(preset, preset)));
+    }
+    setAssistOverride(state.assistOverride);
   }
 
   function bindEvents() {
@@ -98,6 +73,10 @@
     dom.launchBtn?.addEventListener("click", onLaunchFlightTest);
     dom.openArchitectBtn?.addEventListener("click", () => (window.location.href = "ship-architect.html"));
     dom.openAppConfigBtn?.addEventListener("click", () => (window.location.href = "app-config.html"));
+    dom.assistOverrideSelect?.addEventListener("change", (event) => {
+      const value = event.target.value || null;
+      setAssistOverride(value);
+    });
 
     dom.shipImage?.addEventListener("error", () => {
       dom.shipImage?.setAttribute("hidden", "hidden");
@@ -132,6 +111,37 @@
     });
   }
 
+  function setAssistOverride(value) {
+    state.assistOverride = value || null;
+    if (dom.assistOverrideSelect && dom.assistOverrideSelect.value !== (value || "")) {
+      dom.assistOverrideSelect.value = value || "";
+    }
+    const hint = value ? `Перекрыт на ${value}` : "Из ShipConfig";
+    writeField("assist-override-status", hint);
+    if (state.current) {
+      persistSelection(state.current);
+    }
+  }
+
+  async function loadManifest() {
+    if (!RESOURCE_SERVICE) {
+      state.manifest = [];
+      showStatus("Не удалось загрузить список кораблей.", true);
+      return;
+    }
+    try {
+      const list = await RESOURCE_SERVICE.loadManifest();
+      state.manifest = Array.isArray(list) ? list : [];
+      if (!state.manifest.length) {
+        showStatus("В каталоге ships нет конфигов.", true);
+      }
+    } catch (error) {
+      console.error("manifest error", error);
+      state.manifest = [];
+      showStatus("Не удалось загрузить список кораблей.", true);
+    }
+  }
+
   async function restoreSelection() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -141,7 +151,7 @@
     try {
       const stored = JSON.parse(raw);
       if (stored.sourceKind === "inline" && stored.inlineShip) {
-        const summary = mapShipConfig(stored.inlineShip, stored.path || "inline");
+        const summary = summarizeShip(stored.inlineShip, stored.path || "inline");
         if ((!summary.sprite || !summary.sprite.value) && stored.snapshot?.sprite?.value) {
           summary.sprite = stored.snapshot.sprite;
         }
@@ -154,6 +164,7 @@
           },
           false
         );
+        setAssistOverride(stored.assistOverride ?? null);
         showStatus("Загружен корабль из localStorage", false);
         return;
       }
@@ -161,6 +172,7 @@
       if (stored.path) {
         const result = await fetchShip(stored.path);
         applySelection(result, false);
+        setAssistOverride(stored.assistOverride ?? null);
         showStatus("Восстановлен последний выбранный корабль", false);
         return;
       }
@@ -168,10 +180,6 @@
       console.warn("Не удалось распарсить localStorage", error);
     }
 
-    return loadDefaultShip();
-  }
-
-  async function loadDefaultShip() {
     return loadRandomShip();
   }
 
@@ -201,14 +209,15 @@
     if (cache.has(key)) {
       return cache.get(key);
     }
-
-    const encoded = encodeURI(path);
-    const response = await fetch(encoded, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`Не удалось загрузить ${path}: ${response.status}`);
-    }
-    const json = await response.json();
-    const summary = mapShipConfig(json, path);
+    const json = RESOURCE_SERVICE
+      ? await RESOURCE_SERVICE.getShipConfig(path)
+      : await fetch(path, { cache: "no-store" }).then((response) => {
+          if (!response.ok) {
+            throw new Error(`Не удалось загрузить ${path}: ${response.status}`);
+          }
+          return response.json();
+        });
+    const summary = summarizeShip(json, path);
     const payload = {
       summary,
       raw: json,
@@ -235,6 +244,7 @@
       version: payload.summary.version,
       sourceKind: payload.sourceKind,
       snapshot,
+      assistOverride: state.assistOverride,
       inlineShip: payload.sourceKind === "inline" ? stripSprite(payload.raw) : null,
       storedAt: new Date().toISOString()
     };
@@ -275,10 +285,16 @@
     );
 
     writeField("ship-mass", formatNumber(summary.mass_t, "т"));
-    writeField("ship-scm", formatNumber(summary.scm_mps, "м/с"));
-    writeField("ship-vmax", formatNumber(summary.vmax_mps, "м/с"));
+    writeField("ship-forward-accel", formatNumber(summary.forward_accel_mps2, "м/с²"));
+    writeField("ship-lateral-accel", formatNumber(summary.lateral_accel_mps2, "м/с²"));
     writeField("ship-angular", formatAngular(summary.angular_dps));
+    writeField("ship-thrust-weight", formatRatio(summary.thrust_to_weight, "g"));
     writeField("ship-maneuver", summary.performanceHint || "—");
+    writeField("ship-power", formatNumber(summary.power_MW, "МВт"));
+    writeField("assist-profile", summary.assist_profile || summary.assist?.handling_style || summary.preset || "—");
+    writeField("assist-slip-limit", formatNumber(summary.assist_slip_limit_deg, "°"));
+    writeField("assist-traction", formatFraction(summary.assist_traction_control));
+    writeField("assist-speed-limiter", formatPercent(summary.assist_speed_limiter_ratio));
 
     updatePreview(summary.sprite);
     updateStatusTimestamp();
@@ -342,9 +358,6 @@
     }
 
     state.manifest.forEach((entry) => {
-      const cached = cache.get(entry.path);
-      const summary = cached?.summary;
-
       const card = document.createElement("button");
       card.type = "button";
       card.className = "picker-card";
@@ -353,11 +366,14 @@
         card.classList.add("is-active");
       }
 
+      const summary = getEntrySummary(entry);
       const thumbSrc = summary?.sprite?.value
         ? summary.sprite.kind === "path"
           ? encodeURI(summary.sprite.value)
           : summary.sprite.value
         : "";
+      const stats = renderPickerStats(summary);
+      const tags = renderTags(summary?.tags || entry.tags);
 
       card.innerHTML = `
         <div class="picker-card__preview">
@@ -368,15 +384,17 @@
           }
         </div>
         <div class="picker-card__title">${summary?.name ?? entry.path.split("/").pop()}</div>
-        <div class="picker-card__meta" data-role="meta">
-          ${summary ? `${summary.size_type ?? "—"} · ${summary.preset ?? "—"}` : "Загрузка..."}
+        <div class="picker-card__meta">
+          ${summary?.size_type ?? "—"} · ${summary?.assist_profile ?? summary?.preset ?? "—"}
         </div>
+        ${stats}
+        ${tags}
         <span class="picker-card__badge">${summary?.version ?? "v0.x"}</span>
       `;
 
       card.addEventListener("click", async () => {
         try {
-          const result = cached || (await fetchShip(entry.path));
+          const result = await fetchShip(entry.path);
           applySelection(result);
           togglePicker(false);
           showStatus(`Выбран ${result.summary.name}`, false);
@@ -387,26 +405,6 @@
       });
 
       dom.pickerList.appendChild(card);
-
-      if (!summary) {
-        fetchShip(entry.path)
-          .then(({ summary: fresh }) => {
-            const meta = card.querySelector('[data-role="meta"]');
-            if (meta) {
-              meta.textContent = `${fresh.size_type ?? "—"} · ${fresh.preset ?? "—"}`;
-            }
-            const img = card.querySelector("img");
-            if (img && fresh.sprite?.value) {
-              img.src = fresh.sprite.kind === "path" ? encodeURI(fresh.sprite.value) : fresh.sprite.value;
-            }
-          })
-          .catch(() => {
-            const meta = card.querySelector('[data-role="meta"]');
-            if (meta) {
-              meta.textContent = "Ошибка чтения файла";
-            }
-          });
-      }
     });
   }
 
@@ -419,7 +417,7 @@
     try {
       const text = await file.text();
       const json = JSON.parse(text);
-      const summary = mapShipConfig(json, `local:${file.name}`);
+      const summary = summarizeShip(json, `local:${file.name}`);
       const payload = {
         summary,
         raw: json,
@@ -447,10 +445,14 @@
       preset: summary.preset,
       presetSource: summary.presetSource,
       mass_t: summary.mass_t,
-      scm_mps: summary.scm_mps,
-      vmax_mps: summary.vmax_mps,
+      forward_accel_mps2: summary.forward_accel_mps2,
+      lateral_accel_mps2: summary.lateral_accel_mps2,
       angular_dps: summary.angular_dps,
-      sprite: summary.sprite
+      sprite: summary.sprite,
+      assist_profile: summary.assist_profile,
+      assist_slip_limit_deg: summary.assist_slip_limit_deg,
+      assist_traction_control: summary.assist_traction_control,
+      assist_speed_limiter_ratio: summary.assist_speed_limiter_ratio
     };
   }
 
@@ -473,6 +475,7 @@
     } finally {
       dom.launchBtn?.classList.remove("is-busy");
     }
+
   }
 
   function buildFlightTestAppConfig(selection) {
@@ -481,6 +484,8 @@
       sourceKind === "inline"
         ? { inline_ship: raw }
         : { ship_config_path: sourcePath };
+    const autopPreset = state.assistOverride || summary.preset;
+    const autopSource = state.assistOverride ? "launcher" : summary.presetSource || "config";
 
     return {
       version: "0.5.3",
@@ -514,7 +519,23 @@
       autopilot: {
         coupled: true,
         dampeners: true,
-        preset: summary.preset
+        preset: autopPreset,
+        source: autopSource,
+        profile: summary.assist_profile || summary.preset,
+        slip_limit_deg: summary.assist_slip_limit_deg ?? null,
+        traction_control: summary.assist_traction_control ?? null,
+        speed_limiter_ratio: summary.assist_speed_limiter_ratio ?? null
+      },
+      pilot_assist: {
+        preset: autopPreset,
+        override: state.assistOverride || null,
+        summary: {
+          profile: summary.assist_profile || summary.preset,
+          slip_limit_deg: summary.assist_slip_limit_deg ?? null,
+          traction_control: summary.assist_traction_control ?? null,
+          speed_limiter_ratio: summary.assist_speed_limiter_ratio ?? null,
+          turn_authority: summary.assist_turn_authority ?? null
+        }
       },
       selected_ship: {
         id: summary.id,
@@ -556,123 +577,11 @@
     }, 4200);
   }
 
-  function mapShipConfig(config, sourcePath) {
-    const version = detectVersion(config);
-    return version.startsWith("0.6") ? mapV06(config, sourcePath) : mapV053(config, sourcePath);
-  }
-
-  function detectVersion(config) {
-    const metaVersion = String(config?.meta?.version || "").trim();
-    if (metaVersion) {
-      return metaVersion;
+  function summarizeShip(config, sourcePath) {
+    if (!SHIP_ADAPTER) {
+      throw new Error("Ship adapter is not available");
     }
-    if (config.classification) {
-      return "0.6";
-    }
-    return "0.5.3";
-  }
-
-  function mapV06(config, sourcePath) {
-    const size = config.classification?.size || "small";
-    const type = config.classification?.type || "fighter";
-    const sizeType = config.classification?.size_type || `${size} ${type}`.trim();
-    const preset = config.assist?.preset || recommendPreset(sizeType);
-
-    return {
-      id: config.meta?.id || config.meta?.name || "ship",
-      name: config.meta?.name || "Без имени",
-      version: config.meta?.version || "0.6",
-      size,
-      type,
-      size_type: sizeType,
-      preset,
-      presetSource: config.assist?.preset ? "config" : "recommended",
-      mass_t: config.mass?.dry_t ?? null,
-      scm_mps: config.performance?.scm_mps ?? null,
-      vmax_mps: config.performance?.vmax_mps ?? null,
-      angular_dps: config.performance?.angular_dps ?? null,
-      performanceHint: buildPerformanceHint(config.performance),
-      sprite: resolveSprite(config.media?.sprite, sourcePath),
-      sourceLabel: sourcePath?.startsWith("local:")
-        ? "Импортированный JSON"
-        : `Файл: ${sourcePath || "—"}`
-    };
-  }
-
-  function mapV053(config, sourcePath) {
-    const className = (config.meta?.class || config.meta?.name || "medium freighter").toLowerCase();
-    const [size = "medium", typePhrase = "freighter"] = className.split(/\s+/);
-    const sizeType = `${size} ${typePhrase}`.trim();
-    const preset = recommendPreset(sizeType);
-
-    const angular = toAngularFromRcs(config.rcs);
-    const sprite =
-      config.sprite?.path && config.sprite.path.startsWith("assets")
-        ? { kind: "path", value: config.sprite.path.replace(/^assets/, "asstets"), alt: config.meta?.name }
-        : null;
-
-    return {
-      id: config.meta?.id || config.meta?.name || "ship-legacy",
-      name: config.meta?.name || config.meta?.class || "Legacy ship",
-      version: config.meta?.version || "0.5.3",
-      size,
-      type: typePhrase || "fighter",
-      size_type: sizeType,
-      preset,
-      presetSource: "recommended",
-      mass_t: config.mass?.mass_kg ? config.mass.mass_kg / 1000 : null,
-      scm_mps: null,
-      vmax_mps: null,
-      angular_dps: angular,
-      performanceHint: config.g_limits?.profile ? `G-profile: ${config.g_limits.profile}` : null,
-      sprite,
-      sourceLabel: sourcePath?.startsWith("local:")
-        ? "Импортированный JSON (v0.5.3)"
-        : `Legacy: ${sourcePath || "—"}`
-    };
-  }
-
-  function recommendPreset(sizeTypeRaw) {
-    const key = (sizeTypeRaw || "").toLowerCase();
-    const match = Object.keys(PRESET_RECOMMENDATIONS).find(
-      (entry) => entry !== "default" && key.includes(entry)
-    );
-    return PRESET_RECOMMENDATIONS[match || "default"];
-  }
-
-  function resolveSprite(sprite, sourcePath) {
-    if (!sprite) {
-      return null;
-    }
-    if (sprite.dataUrl) {
-      return { kind: "dataUrl", value: sprite.dataUrl, alt: sprite.name || "ship sprite" };
-    }
-    if (sprite.path) {
-      const normalized = sprite.path.replace(/^assets/, "asstets");
-      return { kind: "path", value: normalized, alt: sprite.name || sourcePath };
-    }
-    return null;
-  }
-
-  function buildPerformanceHint(perf) {
-    if (!perf) {
-      return null;
-    }
-    const accel = perf.accel_fwd_mps2 ? `${perf.accel_fwd_mps2.toFixed(0)} м/с² accel` : null;
-    const strafe = perf.strafe_mps2?.x ? `Strafe ${perf.strafe_mps2.x.toFixed(0)} м/с²` : null;
-    return [accel, strafe].filter(Boolean).join(" · ") || null;
-  }
-
-  function toAngularFromRcs(rcs) {
-    if (!rcs) {
-      return null;
-    }
-    const omega = rcs.turn_omega_max_radps;
-    if (!omega) {
-      return null;
-    }
-    const deg = (omega * 180) / Math.PI;
-    return { pitch: deg, yaw: deg, roll: deg };
+    return SHIP_ADAPTER.parseShipConfig(config, sourcePath);
   }
 
   function formatNumber(value, suffix) {
@@ -682,6 +591,14 @@
     const formatted = value.toLocaleString("ru-RU", {
       maximumFractionDigits: value >= 10 ? 0 : 1
     });
+    return suffix ? `${formatted} ${suffix}` : formatted;
+  }
+
+  function formatRatio(value, suffix) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    const formatted = value >= 10 ? value.toFixed(1) : value.toFixed(2);
     return suffix ? `${formatted} ${suffix}` : formatted;
   }
 
@@ -698,5 +615,91 @@
       return "—";
     }
     return `${value.toFixed(0)}°`;
+  }
+
+  function formatFraction(value, digits = 2) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    return value.toFixed(digits);
+  }
+
+  function formatPercent(value) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    return `${Math.round(value * 100)}%`;
+  }
+
+  function getEntrySummary(entry) {
+    if (!entry) {
+      return null;
+    }
+    if (entry.summary) {
+      return entry.summary;
+    }
+    return {
+      name: entry.name,
+      size: entry.size,
+      type: entry.type,
+      size_type: entry.size && entry.type ? `${entry.size} ${entry.type}` : entry.size || entry.type || "",
+      preset: entry.preset,
+      presetSource: entry.presetSource,
+      version: entry.version,
+      sprite: entry.preview || null,
+      forward_accel_mps2: entry.forward_accel_mps2 ?? null,
+      lateral_accel_mps2: entry.lateral_accel_mps2 ?? null,
+      thrust_to_weight: entry.thrust_to_weight ?? null,
+      power_MW: entry.power_MW ?? null,
+      tags: entry.tags || [],
+      assist_profile: entry.assist_profile ?? null,
+      assist_slip_limit_deg: entry.assist_slip_limit_deg ?? null,
+      assist_traction_control: entry.assist_traction_control ?? null,
+      assist_speed_limiter_ratio: entry.assist_speed_limiter_ratio ?? null,
+      assist_turn_authority: entry.assist_turn_authority ?? null,
+      assist: entry.assist ?? null
+    };
+  }
+
+  function renderPickerStats(summary) {
+    if (!summary) {
+      return "";
+    }
+    const forward = typeof summary.forward_accel_mps2 === "number" ? `${summary.forward_accel_mps2.toFixed(0)} м/с²` : "—";
+    const lateral = typeof summary.lateral_accel_mps2 === "number" ? `${summary.lateral_accel_mps2.toFixed(0)} м/с²` : "—";
+    const ratio =
+      typeof summary.thrust_to_weight === "number"
+        ? summary.thrust_to_weight >= 10
+          ? summary.thrust_to_weight.toFixed(1)
+          : summary.thrust_to_weight.toFixed(2)
+        : "—";
+    const assistProfile = summary.assist_profile || summary.preset || "—";
+    const slipLimit = typeof summary.assist_slip_limit_deg === "number" ? `${summary.assist_slip_limit_deg.toFixed(0)}°` : "—";
+    const traction =
+      typeof summary.assist_traction_control === "number" ? summary.assist_traction_control.toFixed(2) : "—";
+    return `
+      <div class="picker-card__stats">
+        <span title="Forward accel">↗ ${forward}</span>
+        <span title="Lateral accel">⇆ ${lateral}</span>
+        <span title="Thrust to weight">T/W ${ratio}</span>
+      </div>
+      <div class="picker-card__assist" title="Сводка Coupled ассиста">
+        Assist: ${assistProfile} · β≤${slipLimit} · TC ${traction}
+      </div>
+    `;
+  }
+
+  function renderTags(tags) {
+    if (!tags || !tags.length) {
+      return "";
+    }
+    return `
+      <div class="tag-list">
+        ${tags
+          .slice(0, 6)
+          .map((tag) => `<span class="tag">${tag}</span>`)
+          .join("")}
+      </div>
+    `;
   }
 })();

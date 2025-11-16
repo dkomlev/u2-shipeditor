@@ -1,80 +1,42 @@
 "use strict";
 
 (function () {
+  const AppConfigLib =
+    (typeof window !== "undefined" && window.U2AppConfig) ||
+    (typeof globalThis !== "undefined" && globalThis.U2AppConfig);
+  if (!AppConfigLib) {
+    console.error("U2AppConfig is not loaded. Include js/lib/appconfig.js before js/app-config.js");
+    return;
+  }
   const clone =
-    typeof structuredClone === "function"
+    AppConfigLib.clone ||
+    (typeof structuredClone === "function"
       ? (value) => structuredClone(value)
-      : (value) => JSON.parse(JSON.stringify(value));
+      : (value) => JSON.parse(JSON.stringify(value)));
+  const mergeDeep =
+    AppConfigLib.mergeDeep ||
+    function mergeDeep(target, source) {
+      if (typeof target !== "object" || typeof source !== "object" || !target || !source) {
+        return source;
+      }
+      Object.keys(source).forEach((key) => {
+        if (Array.isArray(source[key])) {
+          target[key] = source[key].slice();
+        } else if (typeof source[key] === "object" && source[key] !== null) {
+          target[key] = mergeDeep(target[key] || {}, source[key]);
+        } else {
+          target[key] = source[key];
+        }
+      });
+      return target;
+    };
+  let SECTION_DEFS = AppConfigLib.SECTION_DEFS;
+  const DEFAULT_CONFIG = AppConfigLib.createDefaultConfig();
   const STORAGE_KEY = "u2.appConfig";
   const AUTOSAVE_DELAY = 1000;
-  const DEFAULT_CONFIG = {
-    version: "0.5.3",
-    build: "u2-universe-editor",
-    paths: {
-      ship_config_path: "ships/fighter/small fighter 05-config.json",
-      app_config_path: "./config/appconfig.json"
-    },
-    world: {
-      seed: 1337,
-      bounds: {
-        width: 1000000,
-        height: 1000000
-      },
-      environment: "vacuum"
-    },
-    physics: {
-      c_mps: 10000,
-      dt_sec: 0.0166667,
-      gravity_mps2: 0
-    },
-    render: {
-      grid: {
-        enabled: true,
-        cell: 250,
-        alpha: 0.25
-      },
-      axis: true,
-      hud: true
-    },
-    hud: {
-      language: "ru-RU",
-      units: "metric",
-      show_debug: false
-    },
-    input: {
-      profile: "kbm",
-      invert_y: false,
-      bindings: {
-        throttle_up: "W",
-        throttle_down: "S",
-        strafe_left: "A",
-        strafe_right: "D",
-        boost: "LeftShift"
-      }
-    },
-    collision: {
-      mode: "AABB",
-      debug: false
-    },
-    asteroids: {
-      enabled: true,
-      count: 500,
-      density: 0.4,
-      radius_min: 35,
-      radius_max: 120
-    },
-    autopilot: {
-      coupled: true,
-      dampeners: true,
-      default_speed_limit: 500
-    },
-    debug: {
-      logging: false,
-      probes: true
-    }
-  };
 
-  const SECTION_DEFS = [
+  if (!SECTION_DEFS) {
+    SECTION_DEFS = [
     {
       id: "paths",
       title: "Пути",
@@ -391,7 +353,8 @@
         }
       ]
     }
-  ];
+    ];
+  }
 
   const state = {
     config: clone(DEFAULT_CONFIG),
@@ -676,22 +639,6 @@
       console.warn("AppConfig поврежден, откат к дефолту", error);
       state.config = clone(DEFAULT_CONFIG);
     }
-  }
-
-  function mergeDeep(target, source) {
-    if (typeof target !== "object" || typeof source !== "object" || !target || !source) {
-      return source;
-    }
-    Object.keys(source).forEach((key) => {
-      if (Array.isArray(source[key])) {
-        target[key] = source[key].slice();
-      } else if (typeof source[key] === "object" && source[key] !== null) {
-        target[key] = mergeDeep(target[key] || {}, source[key]);
-      } else {
-        target[key] = source[key];
-      }
-    });
-    return target;
   }
 
   function resetCurrentSection() {

@@ -1,68 +1,92 @@
 {
   "meta": {
-    "id": "courier-1",
-    "name": "courier",
-    "version": "0.6",
-    "author": "U2 Team"
+    "id": "Stealth Interceptor",
+    "name": "Stelth Intercepor",
+    "version": "0.6.4",
+    "author": "U2"
   },
   "classification": {
     "size": "small",
-    "type": "courier",
-    "size_type": "small courier",
+    "type": "interceptor",
+    "size_type": "small interceptor",
     "stealth": "stealth",
-    "variant": "Stealth Courier"
+    "variant": "Stealth Fighter"
   },
   "geometry": {
-    "length_m": 24,
-    "width_m": 18.82,
-    "height_m": 6,
-    "hull_radius_m": 15.25
+    "length_m": 18,
+    "width_m": 14.11,
+    "height_m": 4,
+    "hull_radius_m": 11.44
   },
   "mass": {
-    "dry_t": 79.7
+    "dry_t": 58.7
   },
   "inertia_opt": {
-    "Ixx": 2591527.86,
-    "Iyy": 4064700,
-    "Izz": 6178027.86,
-    "Izz_kg_m2": 871041.667
+    "Ixx": 1052158.86,
+    "Iyy": 1663166.67,
+    "Izz": 2558792.19
   },
   "signatures": {
-    "IR": 2,
-    "EM": 2,
-    "CS": 2
+    "IR": 1,
+    "EM": 1,
+    "CS": 1
   },
   "performance": {
-    "scm_mps": 260,
-    "vmax_mps": 1200,
-    "accel_fwd_mps2": 70,
-    "strafe_mps2": {
-      "x": 70,
-      "y": 70,
-      "z": 70
+    "accel_profile": {
+      "forward_mps2": 70,
+      "backward_mps2": 30,
+      "lateral_mps2": 50,
+      "vertical_mps2": 40
     },
     "angular_dps": {
-      "pitch": 85,
-      "yaw": 70,
-      "roll": 110
+      "pitch": 62,
+      "yaw": 43,
+      "roll": 160
     },
     "angular_accel_opt": {
       "pitch": null,
       "yaw": null,
       "roll": null
+    },
+    "scm_mps": 230,
+    "vmax_mps": 1200,
+    "accel_fwd_mps2": 90,
+    "strafe_mps2": {
+      "x": 85,
+      "y": 85,
+      "z": 85
+    },
+    "omega_cap_dps": {
+      "pitch": 95,
+      "yaw": 80,
+      "roll": 130
     }
   },
   "propulsion": {
-    "main_thrust_MN": 4.9,
-    "rcs_budget_MN": 1.47
+    "main_drive": {
+      "max_thrust_kN": 4200,
+      "sustained_thrust_kN": 3150,
+      "max_power_MW": 25
+    },
+    "rcs": {
+      "forward_kN": 1260,
+      "backward_kN": 1800,
+      "lateral_kN": 3000,
+      "vertical_kN": 2400,
+      "pitch_kNm": 360,
+      "yaw_kNm": 320,
+      "roll_kNm": 550
+    },
+    "main_thrust_MN": 5.283,
+    "rcs_budget_MN": 1.585
   },
   "power_opt": {
-    "reactor_MW": 27.9,
-    "cooling_MW": 22.3
+    "reactor_MW": 20.5,
+    "cooling_MW": 16.4
   },
   "payload": {
-    "cargo_scu": 16,
-    "crew": "1–2"
+    "cargo_scu": 0,
+    "crew": "1"
   },
   "hardpoints_opt": {
     "fixed": [],
@@ -71,20 +95,49 @@
     "missiles": []
   },
   "weapons": {
-    "summary": "light defensive"
+    "summary": "2–3×S3 + missiles"
   },
   "assist": {
-    "preset": "F1",
-    "slip_lim_deg": 8,
-    "stab_gain": 0.95,
-    "oversteer_bias": 0,
-    "cap_main_coupled": 0.6400000000000001,
+    "handling_style": "Drift",
     "speed_limiter_ratio": 0.765,
-    "brake_g_sustain": 6.067311467218674,
-    "brake_g_boost": 8.565616189014598,
-    "boost_duration_s": 3,
-    "boost_cooldown_s": 12
+    "handling": {
+      "stab_gain": 1,
+      "stab_damping": 0.9,
+      "slip_threshold_deg": 8,
+      "slip_limit_deg": 18.4,
+      "slip_correction_gain": 1.5,
+      "nose_follow_input": 0.25,
+      "anticipation_gain": 0.14,
+      "oversteer_bias": 0.25,
+      "bias": 0.2,
+      "responsiveness": 1.3,
+      "slip_target_max": 18.4,
+      "traction_control": 0.25,
+      "cap_main_coupled": 0.68,
+      "lat_authority": 0.95,
+      "turn_authority": 0.95,
+      "turn_assist": 0.55,
+      "traction_floor": 0.2,
+      "traction_speed_ref": 350,
+      "nose_align_gain": 0.05
+    },
+    "jerk": {
+      "forward_mps3": 220,
+      "lateral_mps3": 180,
+      "angular_rps3": 0.25
+    },
+    "brake": {
+      "g_sustain": 7.5,
+      "g_boost": 10.2,
+      "boost_duration_s": 3,
+      "boost_cooldown_s": 12
+    },
+    "preset": "Rally"
   },
+  "tags": [
+    "small",
+    "fighter"
+  ],
   "media": {
     "sprite": {
       "name": "u2_fighter1.png",
@@ -94,5 +147,6 @@
       "height": 1024
     }
   },
-  "notes_opt": ""
+  "notes_opt": "",
+  "legacy_v053": {}
 }

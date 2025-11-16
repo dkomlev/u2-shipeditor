@@ -1,0 +1,282 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>U2 Simulation Demo</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      background: #05060a;
+      color: #f0f6ff;
+      display: flex;
+      min-height: 100vh;
+    }
+    canvas {
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.03), transparent 60%);
+      flex: 2;
+      height: 100vh;
+    }
+    aside {
+      flex: 1;
+      padding: 24px;
+      border-left: 1px solid rgba(255,255,255,0.08);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.4rem;
+    }
+    .stat {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+    .tag {
+      display: inline-block;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      padding: 2px 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      font-size: 0.75rem;
+    }
+    .hud-panel {
+      position: fixed;
+      left: 24px;
+      top: 24px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(6px);
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: #f5f7ff;
+    }
+    .hud-panel strong {
+      color: #8ef2ff;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="simCanvas" width="900" height="600"></canvas>
+  <aside>
+    <h1>U2 Simulation Demo</h1>
+    <div id="shipMeta"></div>
+    <p>Управление: W/S — тяга, A/D — стрейф, Q/E — поворот. Space — Brake, C — Coupled/Decoupled, R — случайный автопилот. Shift — Boost (только отображение в HUD).</p>
+    <p>Демо использует ядро <code>js/sim/core.js</code>, ввод <code>js/sim/input.js</code> и новый Pilot Assist. Значения подтягиваются из manifest.</p>
+  </aside>
+  <div class="hud-panel" id="hudPanel"></div>
+
+  <script src="js/lib/ship-adapter.js"></script>
+  <script src="js/lib/resources.js"></script>
+  <script src="js/sim/core.js"></script>
+  <script src="js/sim/input.js"></script>
+  <script src="js/sim/coupled-controller.js"></script>
+  <script src="js/sim/pilot-assist.js"></script>
+  <script>
+    (async function () {
+      const resources = window.U2Resources;
+      const adapter = window.U2ShipAdapter;
+      const core = window.U2SimCore;
+      const inputLib = window.U2InputController;
+      const assistLib = window.U2PilotAssist;
+      if (!resources || !adapter || !core || !inputLib || !assistLib) {
+        console.error("Не удалось загрузить зависимости демо.");
+        return;
+      }
+
+      try {
+        await resources.loadManifest();
+      } catch (error) {
+        console.error("Не удалось загрузить manifest", error);
+        alert("Manifest не загрузился. Проверьте консоль и структуру проекта.");
+        return;
+      }
+
+      const manifest = resources.getManifestSync();
+      if (!manifest || !manifest.length) {
+        alert("Manifest пуст. Добавьте корабли в каталог ships.");
+        return;
+      }
+
+      const randomIndex = Math.floor(Math.random() * manifest.length);
+      const selected = manifest[randomIndex];
+      const shipJson = await resources.getShipConfig(selected.path);
+      const summary = adapter.parseShipConfig(shipJson, selected.path);
+
+      const state = core.createState({
+        mass_t: summary.mass_t ?? shipJson.mass_t ?? 1,
+        propulsion: shipJson.propulsion
+      });
+      const input = inputLib.createInputController();
+      const assist = assistLib.createPilotAssist(summary);
+
+      const canvas = document.getElementById("simCanvas");
+      const ctx = canvas.getContext("2d");
+      const metaEl = document.getElementById("shipMeta");
+      const hudEl = document.getElementById("hudPanel");
+      const baseProfile = summary.assist?.handling_style || "Balanced";
+      const PX_PER_METER = 0.4;
+
+      updateMeta(summary);
+
+      document.addEventListener("keydown", input.handleKeyDown);
+      document.addEventListener("keyup", input.handleKeyUp);
+      window.addEventListener("blur", () => {
+        input.handlePointerEnd();
+      });
+
+      let lastTime = performance.now();
+      function loop(now) {
+        const dt = Math.min((now - lastTime) / 1000, 0.05);
+        lastTime = now;
+        const normalizedInput = input.update();
+        const assistResult = assist.update(state, normalizedInput, {
+          dt_sec: dt,
+          c_mps: 100000,
+          inertia: 1
+        });
+        const nextState = core.step(state, assistResult.command, {
+          dt_sec: dt,
+          c_mps: 100000,
+          inertia: 1
+        });
+        state.time = nextState.time;
+        state.position = nextState.position;
+        state.velocity = nextState.velocity;
+        state.orientation = nextState.orientation;
+        state.angularVelocity = nextState.angularVelocity;
+        state.camera = nextState.camera;
+
+        draw(ctx, state, PX_PER_METER);
+        updateHud(state, assistResult, normalizedInput, baseProfile, summary.name);
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+
+      function draw(ctx, state, scale) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid(ctx, state, scale);
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(-state.orientation);
+
+        ctx.fillStyle = "#7af";
+        ctx.beginPath();
+        ctx.moveTo(26, 0);
+        ctx.lineTo(-20, 14);
+        ctx.lineTo(-20, -14);
+        ctx.closePath();
+        ctx.fill();
+
+        const forwardSpeed = state.velocity.x * Math.cos(state.orientation) + state.velocity.y * Math.sin(state.orientation);
+        const rightSpeed = state.velocity.x * Math.sin(state.orientation) - state.velocity.y * Math.cos(state.orientation);
+        const clampVector = (value) => Math.max(Math.min(value, 50), -50);
+        ctx.strokeStyle = "rgba(255,255,255,0.6)";
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(clampVector(forwardSpeed * 0.05), 0);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, clampVector(rightSpeed * 0.05));
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawGrid(ctx, state, scale) {
+        const cameraPos = state.camera?.position ?? state.position;
+        const spacingPx = 80;
+        const spacingWorld = spacingPx / scale;
+        const halfWidthWorld = canvas.width / 2 / scale;
+        const halfHeightWorld = canvas.height / 2 / scale;
+        const minX = cameraPos.x - halfWidthWorld - spacingWorld;
+        const maxX = cameraPos.x + halfWidthWorld + spacingWorld;
+        const minY = cameraPos.y - halfHeightWorld - spacingWorld;
+        const maxY = cameraPos.y + halfHeightWorld + spacingWorld;
+        const firstX = Math.floor(minX / spacingWorld) * spacingWorld;
+        const firstY = Math.floor(minY / spacingWorld) * spacingWorld;
+        const halfWidthPx = canvas.width / 2;
+        const halfHeightPx = canvas.height / 2;
+
+        ctx.save();
+        ctx.translate(halfWidthPx, halfHeightPx);
+        ctx.strokeStyle = "rgba(255,255,255,0.07)";
+        ctx.lineWidth = 1;
+
+        for (let x = firstX; x <= maxX; x += spacingWorld) {
+          const screenX = (x - cameraPos.x) * scale;
+          ctx.beginPath();
+          ctx.moveTo(screenX, -halfHeightPx - spacingPx);
+          ctx.lineTo(screenX, halfHeightPx + spacingPx);
+          ctx.stroke();
+        }
+        for (let y = firstY; y <= maxY; y += spacingWorld) {
+          const screenY = -(y - cameraPos.y) * scale;
+          ctx.beginPath();
+          ctx.moveTo(-halfWidthPx - spacingPx, screenY);
+          ctx.lineTo(halfWidthPx + spacingPx, screenY);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+        ctx.beginPath();
+        ctx.moveTo(-12, 0);
+        ctx.lineTo(12, 0);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, -12);
+        ctx.lineTo(0, 12);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      function updateMeta(summary) {
+        metaEl.innerHTML = `
+          <div class="stat"><strong>${summary.name}</strong> — ${summary.size_type}</div>
+          <div class="stat">Forward accel: ${formatNumber(summary.forward_accel_mps2)} м/с²</div>
+          <div class="stat">Lateral accel: ${formatNumber(summary.lateral_accel_mps2)} м/с²</div>
+          <div class="stat">Thrust/Weight: ${formatNumber(summary.thrust_to_weight, 2)} g</div>
+          <div class="stat">Power: ${summary.power_MW ?? "—"} МВт</div>
+          <div>${(summary.tags || []).map((tag) => `<span class="tag">${tag}</span>`).join("")}</div>
+        `;
+      }
+
+      function updateHud(state, assistResult, normalizedInput, baseProfile, shipName) {
+        if (!hudEl) {
+          return;
+        }
+        const speed = Math.hypot(state.velocity.x, state.velocity.y);
+        const forwardSpeed = state.velocity.x * Math.cos(state.orientation) + state.velocity.y * Math.sin(state.orientation);
+        const rightSpeed = state.velocity.x * Math.sin(state.orientation) - state.velocity.y * Math.cos(state.orientation);
+        const modeLabel = assistResult?.mode ?? (normalizedInput.modeCoupled ? "Coupled" : "Decoupled");
+        const telemetry = assistResult?.telemetry || {};
+        const profileLabel = telemetry.profile || baseProfile;
+        const slipCurrent = typeof telemetry.slip_deg === "number" ? telemetry.slip_deg.toFixed(1) : "—";
+        const slipTarget = typeof telemetry.slip_target_deg === "number" ? telemetry.slip_target_deg.toFixed(1) : "—";
+        hudEl.innerHTML = `
+          <div><strong>${shipName || "Unknown Ship"}</strong></div>
+          <div><strong>Mode:</strong> ${modeLabel}</div>
+          <div><strong>Autopilot:</strong> ${assistResult?.autopilot ? "ON" : "OFF"}</div>
+          <div><strong>Profile:</strong> ${profileLabel}</div>
+          <div><strong>Boost:</strong> ${normalizedInput.boost ? "ON" : "OFF"}</div>
+          <div><strong>Slip:</strong> ${slipCurrent}° / ${slipTarget}°</div>
+          <div><strong>Jerk:</strong> F ${telemetry.jerk_clamped_forward ? "ON" : "off"} · L ${telemetry.jerk_clamped_lateral ? "ON" : "off"}</div>
+          <div><strong>Speed:</strong> ${speed.toFixed(1)} м/с</div>
+          <div><strong>Forward:</strong> ${forwardSpeed.toFixed(1)} м/с</div>
+          <div><strong>Strafe:</strong> ${rightSpeed.toFixed(1)} м/с</div>
+          <div><strong>Angular:</strong> ${(state.angularVelocity * 57.3).toFixed(1)} °/с</div>
+          <div><strong>Limiter:</strong> ${telemetry.limiter_active ? "ON" : "off"}</div>
+          <div><strong>Pos:</strong> ${state.position.x.toFixed(0)}, ${state.position.y.toFixed(0)} м</div>
+        `;
+      }
+
+      function formatNumber(value, digits = 1) {
+        return typeof value === "number" ? value.toFixed(digits) : "—";
+      }
+    })();
+  </script>
+</body>
+</html>
+

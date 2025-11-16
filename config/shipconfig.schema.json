@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://u2.example/schema/shipconfig-v0.6.json",
-  "title": "U2 ShipConfig v0.6",
+  "$id": "https://u2.example/schema/shipconfig-v0.6.5.json",
+  "title": "U2 ShipConfig v0.6.5",
   "type": "object",
   "required": [
     "meta",
@@ -13,7 +13,8 @@
     "propulsion",
     "payload",
     "weapons",
-    "assist"
+    "assist",
+    "tags"
   ],
   "properties": {
     "meta": {
@@ -158,26 +159,30 @@
     },
     "performance": {
       "type": "object",
+      "required": [
+        "accel_profile",
+        "angular_dps"
+      ],
       "properties": {
-        "scm_mps": {
-          "type": "number"
-        },
-        "vmax_mps": {
-          "type": "number"
-        },
-        "accel_fwd_mps2": {
-          "type": "number"
-        },
-        "strafe_mps2": {
+        "accel_profile": {
           "type": "object",
+          "required": [
+            "forward_mps2",
+            "backward_mps2",
+            "lateral_mps2",
+            "vertical_mps2"
+          ],
           "properties": {
-            "x": {
+            "forward_mps2": {
               "type": "number"
             },
-            "y": {
+            "backward_mps2": {
               "type": "number"
             },
-            "z": {
+            "lateral_mps2": {
+              "type": "number"
+            },
+            "vertical_mps2": {
               "type": "number"
             }
           }
@@ -197,7 +202,10 @@
           }
         },
         "angular_accel_opt": {
-          "type": "object",
+          "type": [
+            "object",
+            "null"
+          ],
           "properties": {
             "pitch": {
               "type": [
@@ -223,12 +231,64 @@
     },
     "propulsion": {
       "type": "object",
+      "required": [
+        "main_drive",
+        "rcs"
+      ],
       "properties": {
-        "main_thrust_MN": {
-          "type": "number"
+        "main_drive": {
+          "type": "object",
+          "required": [
+            "max_thrust_kN",
+            "sustained_thrust_kN",
+            "max_power_MW"
+          ],
+          "properties": {
+            "max_thrust_kN": {
+              "type": "number"
+            },
+            "sustained_thrust_kN": {
+              "type": "number"
+            },
+            "max_power_MW": {
+              "type": "number"
+            }
+          }
         },
-        "rcs_budget_MN": {
-          "type": "number"
+        "rcs": {
+          "type": "object",
+          "required": [
+            "forward_kN",
+            "backward_kN",
+            "lateral_kN",
+            "vertical_kN",
+            "pitch_kNm",
+            "yaw_kNm",
+            "roll_kNm"
+          ],
+          "properties": {
+            "forward_kN": {
+              "type": "number"
+            },
+            "backward_kN": {
+              "type": "number"
+            },
+            "lateral_kN": {
+              "type": "number"
+            },
+            "vertical_kN": {
+              "type": "number"
+            },
+            "pitch_kNm": {
+              "type": "number"
+            },
+            "yaw_kNm": {
+              "type": "number"
+            },
+            "roll_kNm": {
+              "type": "number"
+            }
+          }
         }
       }
     },
@@ -289,15 +349,11 @@
       "type": "object",
       "required": [
         "preset",
-        "slip_lim_deg",
-        "stab_gain",
-        "oversteer_bias",
-        "cap_main_coupled",
+        "handling_style",
         "speed_limiter_ratio",
-        "brake_g_sustain",
-        "brake_g_boost",
-        "boost_duration_s",
-        "boost_cooldown_s"
+        "handling",
+        "jerk",
+        "brake"
       ],
       "properties": {
         "preset": {
@@ -314,34 +370,100 @@
             "Recon"
           ]
         },
-        "slip_lim_deg": {
-          "type": "number"
-        },
-        "stab_gain": {
-          "type": "number"
-        },
-        "oversteer_bias": {
-          "type": "number"
-        },
-        "cap_main_coupled": {
-          "type": "number"
+        "handling_style": {
+          "enum": [
+            "Balanced",
+            "Drift",
+            "Grip"
+          ]
         },
         "speed_limiter_ratio": {
-          "type": "number"
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
-        "brake_g_sustain": {
-          "type": "number"
+        "handling": {
+          "type": "object",
+          "required": [
+            "stab_gain",
+            "stab_damping",
+            "slip_threshold_deg",
+            "slip_limit_deg",
+            "slip_correction_gain",
+            "nose_follow_input",
+            "anticipation_gain",
+            "oversteer_bias",
+            "bias",
+            "responsiveness",
+            "slip_target_max",
+            "traction_control",
+            "cap_main_coupled",
+            "lat_authority"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "stab_gain": { "type": "number" },
+            "stab_damping": { "type": "number" },
+            "slip_threshold_deg": { "type": "number" },
+            "slip_limit_deg": { "type": "number" },
+            "slip_correction_gain": { "type": "number" },
+            "nose_follow_input": { "type": "number" },
+            "anticipation_gain": { "type": "number" },
+            "oversteer_bias": { "type": "number" },
+            "bias": { "type": "number" },
+            "responsiveness": { "type": "number" },
+            "slip_target_max": { "type": "number" },
+            "traction_control": { "type": "number" },
+            "cap_main_coupled": { "type": "number" },
+            "lat_authority": { "type": "number" },
+            "turn_authority": { "type": "number" },
+            "turn_assist": { "type": "number" },
+            "traction_floor": { "type": "number" },
+            "traction_speed_ref": { "type": "number" },
+            "strafe_to_slip_gain": { "type": "number" },
+            "nose_align_gain": { "type": "number" }
+          }
         },
-        "brake_g_boost": {
-          "type": "number"
+        "jerk": {
+          "type": "object",
+          "required": [
+            "forward_mps3",
+            "lateral_mps3"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "forward_mps3": { "type": "number" },
+            "lateral_mps3": { "type": "number" },
+            "angular_rps3": { "type": "number" }
+          }
         },
-        "boost_duration_s": {
-          "type": "number"
-        },
-        "boost_cooldown_s": {
-          "type": "number"
+        "brake": {
+          "type": "object",
+          "required": [
+            "g_sustain",
+            "g_boost",
+            "boost_duration_s",
+            "boost_cooldown_s"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "g_sustain": { "type": "number" },
+            "g_boost": { "type": "number" },
+            "boost_duration_s": { "type": "number" },
+            "boost_cooldown_s": { "type": "number" }
+          }
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
     },
     "legacy_v053": {
       "type": "object",
@@ -351,5 +473,5 @@
       "type": "string"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

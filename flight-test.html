@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>U2 FlightTest</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #000;
+      color: #e0e8f0;
+      overflow: hidden;
+    }
+    #gameCanvas {
+      display: block;
+      background: radial-gradient(circle at 30% 40%, rgba(10, 20, 40, 0.4), #000);
+    }
+    
+    /* HUD Panels */
+    .hud-panel {
+      position: fixed;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 13px;
+      line-height: 1.5;
+      font-family: 'Courier New', monospace;
+    }
+    
+    #hudTopLeft {
+      top: 16px;
+      left: 16px;
+      min-width: 280px;
+    }
+    
+    #hudTopRight {
+      top: 16px;
+      right: 16px;
+      text-align: right;
+    }
+    
+    #hudBottomLeft {
+      bottom: 16px;
+      left: 16px;
+    }
+    
+    #hudBottomRight {
+      bottom: 16px;
+      right: 16px;
+      text-align: right;
+    }
+    
+    .hud-panel strong {
+      color: #8ef2ff;
+    }
+    
+    .hud-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #fff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 4px;
+    }
+    
+    .hud-value {
+      display: inline-block;
+      min-width: 80px;
+    }
+    
+    .mode-coupled { color: #4ade80; }
+    .mode-decoupled { color: #fbbf24; }
+    .mode-brake { color: #ef4444; }
+    
+    .sr-active { color: #a78bfa; }
+    .collision-warning { color: #f87171; animation: blink 0.5s infinite; }
+    
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.3; }
+    }
+    
+    /* Loading screen */
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      z-index: 1000;
+    }
+    
+    #loading.hidden {
+      display: none;
+    }
+    
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #8ef2ff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-right: 16px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+  <script src="js/lib/build-info.js"></script>
+  <script>
+    (function () {
+      const info = (typeof window !== "undefined" && window.U2BuildInfo) || null;
+      if (info && info.label) {
+        document.title = `U2 FlightTest ${info.label}`;
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+    <span id="loadingStatus">Loading FlightTest...</span>
+  </div>
+  <script>
+    (function () {
+      const info = (typeof window !== "undefined" && window.U2BuildInfo) || {};
+      const buildId = info.buildId || (typeof info.build === "number" ? info.build.toString().padStart(3, "0") : "000");
+      const version = info.version || "0.0.0";
+      const label = info.label || `v${version} build ${buildId}`;
+      const el = document.getElementById("loadingStatus");
+      if (el) {
+        el.textContent = `Loading FlightTest ${label}...`;
+      }
+    })();
+  </script>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD Panels -->
+  <div id="hudTopLeft" class="hud-panel">
+    <div class="hud-title">SHIP STATUS</div>
+    <div id="shipStatus"></div>
+  </div>
+
+  <div id="hudTopRight" class="hud-panel">
+    <div class="hud-title">FLIGHT MODE</div>
+    <div id="flightMode"></div>
+  </div>
+
+  <div id="hudBottomLeft" class="hud-panel">
+    <div class="hud-title">PHYSICS</div>
+    <div id="physicsInfo"></div>
+  </div>
+
+  <div id="hudBottomRight" class="hud-panel">
+    <div class="hud-title">ENVIRONMENT</div>
+    <div id="envInfo"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/lib/app-config-loader.js"></script>
+  <script src="js/lib/ship-adapter.js"></script>
+  <script src="js/lib/resources.js"></script>
+  <script src="js/sim/relativity.js"></script>
+  <script src="js/sim/core.js"></script>
+  <script src="js/sim/input.js"></script>
+  <script src="js/sim/coupled-controller.js"></script>
+  <script src="js/sim/pilot-assist.js"></script>
+  <script src="js/sim/asteroids.js"></script>
+  <script src="js/sim/collision.js"></script>
+  <script>
+    (async function () {
+      const buildInfo = (typeof window !== "undefined" && window.U2BuildInfo) || {
+        version: "0.0.0",
+        build: 0,
+        buildId: "000",
+        label: "v0.0.0 build 000"
+      };
+      const APP_VERSION = buildInfo.version || "0.0.0";
+      const BUILD_NUMBER = buildInfo.buildId || (typeof buildInfo.build === "number" ? buildInfo.build.toString().padStart(3, "0") : "000");
+      const BUILD_LABEL = buildInfo.label || `v${APP_VERSION} build ${BUILD_NUMBER}`;
+      try {
+        console.log(`FlightTest ${BUILD_LABEL}: Starting initialization...`);
+      
+        const appConfigLoader = window.U2AppConfigLoader;
+        const resources = window.U2Resources;
+        const adapter = window.U2ShipAdapter;
+        const core = window.U2SimCore;
+        const inputLib = window.U2InputController;
+        const assistLib = window.U2PilotAssist;
+        const asteroidLib = window.U2AsteroidGenerator;
+        const collisionLib = window.U2CollisionDetector;
+
+      console.log("Checking dependencies:", {
+        appConfigLoader: !!appConfigLoader,
+        resources: !!resources,
+        adapter: !!adapter,
+        core: !!core,
+        inputLib: !!inputLib,
+        assistLib: !!assistLib,
+        asteroidLib: !!asteroidLib,
+        collisionLib: !!collisionLib
+      });
+
+      if (!appConfigLoader || !resources || !adapter || !core || !inputLib || !assistLib || !asteroidLib || !collisionLib) {
+        console.error("Missing dependencies");
+        document.getElementById("loading").innerHTML = `
+          <div class="spinner"></div>
+          <span style="color: #f87171;">Failed to load modules. Check console (F12).</span>
+        `;
+        return;
+      }
+
+      // Load AppConfig
+      console.log("Loading AppConfig...");
+      const appConfig = await appConfigLoader.loadAppConfig();
+      console.log("AppConfig loaded:", appConfig);
+
+      // Load ShipConfig
+      console.log("Loading manifest...");
+      try {
+        await resources.loadManifest();
+        console.log("Manifest loaded successfully");
+      } catch (error) {
+        console.error("Failed to load manifest:", error);
+        document.getElementById("loading").innerHTML = `
+          <div class="spinner"></div>
+          <span style="color: #f87171;">Failed to load manifest: ${error.message}</span>
+        `;
+        return;
+      }
+
+      const manifest = resources.getManifestSync();
+      console.log("Manifest entries:", manifest?.length || 0);
+      
+      if (!manifest || !manifest.length) {
+        console.error("Manifest is empty");
+        document.getElementById("loading").innerHTML = `
+          <div class="spinner"></div>
+          <span style="color: #f87171;">No ships found in manifest</span>
+        `;
+        return;
+      }
+
+      // Load ship from AppConfig path or random
+      let shipPath = appConfig.paths.ship_config_path;
+      
+      // Validate path exists in manifest
+      if (shipPath) {
+        const pathExists = manifest.some(entry => entry.path === shipPath);
+        if (!pathExists) {
+          console.warn(`Ship path from AppConfig not found: ${shipPath}. Using random ship.`);
+          shipPath = null;
+        }
+      }
+      
+      // Fallback to random ship
+      if (!shipPath) {
+        const randomIndex = Math.floor(Math.random() * manifest.length);
+        shipPath = manifest[randomIndex].path;
+        console.log(`Selected random ship: ${shipPath}`);
+      }
+      
+      console.log("Loading ship:", shipPath);
+      const shipJson = await resources.getShipConfig(shipPath);
+      console.log("Ship JSON loaded:", shipJson);
+      
+      const summary = adapter.parseShipConfig(shipJson, shipPath);
+      console.log("Ship summary:", summary.name);
+
+      // Setup canvas
+      console.log("Setting up canvas...");
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = appConfig.render.canvas?.width || window.innerWidth;
+      canvas.height = appConfig.render.canvas?.height || window.innerHeight;
+      console.log("Canvas size:", canvas.width, "x", canvas.height);
+
+      // Create simulation state
+      console.log("Creating simulation state...");
+      const state = core.createState({
+        mass_t: summary.mass_t ?? shipJson.mass_t ?? 1,
+        propulsion: shipJson.propulsion
+      });
+      console.log("State created:", state);
+
+      const input = inputLib.createInputController();
+      const assist = assistLib.createPilotAssist(summary);
+      console.log("Input and assist controllers created");
+
+      // Generate asteroids
+      console.log("Generating asteroids...");
+      const asteroids = asteroidLib.generateAsteroids(appConfig);
+      console.log(`Asteroids generated: ${asteroids.length}`);
+
+      // Collision state
+      let collisionMode = appConfig.collision.mode; // "AABB" or "Alpha"
+      let collisionOverlay = appConfig.collision.overlay; // boolean
+
+      // Note: Input controller manages its own coupled/autopilot state internally
+      // Initial values: coupled=true, autopilot=false (now disabled by default to prevent drift)
+      console.log("Input controller configured: coupled=true, autopilot=false");
+
+      // Additional key bindings for FlightTest
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "F2") {
+          e.preventDefault();
+          collisionMode = collisionMode === "AABB" ? "Alpha" : "AABB";
+          console.log(`Collision mode: ${collisionMode}`);
+        }
+        if (e.key === "F3") {
+          e.preventDefault();
+          collisionOverlay = !collisionOverlay;
+          console.log(`Collision overlay: ${collisionOverlay}`);
+        }
+      });
+
+      // Event listeners
+      document.addEventListener("keydown", input.handleKeyDown);
+      document.addEventListener("keyup", input.handleKeyUp);
+      window.addEventListener("blur", () => input.handlePointerEnd());
+
+      // Hide loading screen
+      console.log("Initialization complete! Starting main loop...");
+      document.getElementById("loading").classList.add("hidden");
+
+      // Main loop
+      let lastTime = performance.now();
+      function loop(now) {
+        try {
+          const dt = Math.min((now - lastTime) / 1000, appConfig.physics.dt_sec * 2);
+          lastTime = now;
+
+          const normalizedInput = input.update();
+          const assistResult = assist.update(state, normalizedInput, {
+            dt_sec: appConfig.physics.dt_sec,
+            c_mps: appConfig.physics.c_mps,
+            inertia: 1
+          });
+
+          const nextState = core.step(state, assistResult.command, {
+            dt_sec: appConfig.physics.dt_sec,
+            c_mps: appConfig.physics.c_mps,
+            inertia: 1
+          });
+
+          // Update state
+          Object.assign(state, nextState);
+
+          // Update asteroids
+          asteroidLib.updateAsteroids(asteroids, appConfig.physics.dt_sec);
+          asteroidLib.wrapAsteroids(asteroids, appConfig.world.bounds);
+
+          // Check collisions
+          const collisions = collisionLib.checkShipCollisions(
+            { position: state.position, radius: 20 },
+            asteroids,
+            collisionMode
+          );
+
+          // Render
+          draw(ctx, canvas, state, asteroids, collisions, appConfig);
+          updateHUD(state, assistResult, normalizedInput, summary, appConfig, asteroids, collisions);
+
+          requestAnimationFrame(loop);
+        } catch (error) {
+          console.error("Error in main loop:", error);
+          document.getElementById("loading").classList.remove("hidden");
+          document.getElementById("loading").innerHTML = `
+            <div style="color: #f87171; max-width: 600px; text-align: left;">
+              <h2>Runtime Error</h2>
+              <pre style="background: rgba(0,0,0,0.5); padding: 16px; border-radius: 8px; overflow: auto;">${error.stack || error.message}</pre>
+              <p>Check console (F12) for details.</p>
+            </div>
+          `;
+        }
+      }
+      requestAnimationFrame(loop);
+
+      function draw(ctx, canvas, state, asteroids, collisions, config) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Render grid (from sim-demo.html)
+        if (config.render.grid?.enabled) {
+          drawGrid(ctx, canvas, state, config.render.grid);
+        }
+
+        // Render asteroids first (background)
+        asteroidLib.renderAsteroids(ctx, asteroids, state.camera || state, 0.4);
+        
+        // Draw ship
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(-state.orientation);
+        
+        const shipColor = collisions.length > 0 ? "#f87171" : "#7af";
+        ctx.fillStyle = shipColor;
+        ctx.beginPath();
+        ctx.moveTo(26, 0);
+        ctx.lineTo(-20, 14);
+        ctx.lineTo(-20, -14);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.restore();
+
+        // Collision overlay (if enabled)
+        if (collisionOverlay) {
+          collisionLib.renderCollisionOverlay(
+            ctx,
+            { position: state.position, radius: 20 },
+            asteroids,
+            collisions,
+            state.camera || state,
+            0.4
+          );
+        }
+      }
+
+      function drawGrid(ctx, canvas, state, gridConfig) {
+        const cameraPos = state.camera?.position ?? state.position;
+        const scale = 0.4; // pixels per meter
+        const spacingWorld = gridConfig.cell || 250; // meters
+        const spacingPx = spacingWorld * scale;
+        
+        const halfWidthWorld = canvas.width / 2 / scale;
+        const halfHeightWorld = canvas.height / 2 / scale;
+        const minX = cameraPos.x - halfWidthWorld - spacingWorld;
+        const maxX = cameraPos.x + halfWidthWorld + spacingWorld;
+        const minY = cameraPos.y - halfHeightWorld - spacingWorld;
+        const maxY = cameraPos.y + halfHeightWorld + spacingWorld;
+        
+        const firstX = Math.floor(minX / spacingWorld) * spacingWorld;
+        const firstY = Math.floor(minY / spacingWorld) * spacingWorld;
+        
+        const halfWidthPx = canvas.width / 2;
+        const halfHeightPx = canvas.height / 2;
+
+        ctx.save();
+        ctx.translate(halfWidthPx, halfHeightPx);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${gridConfig.alpha || 0.15})`;
+        ctx.lineWidth = 1;
+
+        // Vertical lines
+        for (let x = firstX; x <= maxX; x += spacingWorld) {
+          const screenX = (x - cameraPos.x) * scale;
+          ctx.beginPath();
+          ctx.moveTo(screenX, -halfHeightPx - spacingPx);
+          ctx.lineTo(screenX, halfHeightPx + spacingPx);
+          ctx.stroke();
+        }
+        
+        // Horizontal lines
+        for (let y = firstY; y <= maxY; y += spacingWorld) {
+          const screenY = -(y - cameraPos.y) * scale;
+          ctx.beginPath();
+          ctx.moveTo(-halfWidthPx - spacingPx, screenY);
+          ctx.lineTo(halfWidthPx + spacingPx, screenY);
+          ctx.stroke();
+        }
+
+        // Origin crosshair (brighter)
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.lineWidth = 2;
+        const originX = (0 - cameraPos.x) * scale;
+        const originY = -(0 - cameraPos.y) * scale;
+        
+        ctx.beginPath();
+        ctx.moveTo(originX - 12, originY);
+        ctx.lineTo(originX + 12, originY);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(originX, originY - 12);
+        ctx.lineTo(originX, originY + 12);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      function updateHUD(state, assistResult, input, summary, config, asteroids, collisions) {
+        const speed = Math.hypot(state.velocity.x, state.velocity.y);
+        const telemetry = assistResult.telemetry || {};
+        
+        // Ship Status
+        document.getElementById("shipStatus").innerHTML = `
+          <strong>${summary.name}</strong><br>
+          Speed: <span class="hud-value">${speed.toFixed(1)} m/s</span><br>
+          Position: ${state.position.x.toFixed(0)}, ${state.position.y.toFixed(0)}<br>
+          Orientation: ${(state.orientation * 57.3).toFixed(1)}°
+        `;
+        
+        // Flight Mode
+        const modeClass = assistResult.mode === "Coupled" ? "mode-coupled" :
+                         assistResult.mode === "Brake" ? "mode-brake" : "mode-decoupled";
+        document.getElementById("flightMode").innerHTML = `
+          <span class="${modeClass}"><strong>${assistResult.mode || "Decoupled"}</strong></span><br>
+          Autopilot: ${assistResult.autopilot ? "ON" : "OFF"}<br>
+          Boost: ${input.boost ? "ON" : "OFF"}
+        `;
+        
+        // Physics
+        const gamma = telemetry.gamma || 1;
+        const srClass = telemetry.sr_active ? "sr-active" : "";
+        document.getElementById("physicsInfo").innerHTML = `
+          γ (Gamma): <span class="${srClass}">${gamma.toFixed(4)}</span><br>
+          v/c: ${(telemetry.v_over_c || 0).toFixed(5)}<br>
+          c: ${(config.physics.c_mps / 1000).toFixed(0)} km/s<br>
+          dt: ${(config.physics.dt_sec * 1000).toFixed(1)} ms
+        `;
+        
+        // Environment
+        const collisionClass = collisions.length > 0 ? "collision-warning" : "";
+        document.getElementById("envInfo").innerHTML = `
+          Asteroids: ${asteroids.length} / ${config.asteroids.count}<br>
+          Collisions: <span class="${collisionClass}">${collisionMode}${collisions.length > 0 ? ` (${collisions.length})` : ''}</span><br>
+          Overlay: ${collisionOverlay ? "ON (F3)" : "OFF (F3)"}<br>
+          World: ${(config.world.bounds.width / 1000).toFixed(0)} × ${(config.world.bounds.height / 1000).toFixed(0)} km<br>
+          <span style="opacity: 0.6; font-size: 11px;">${BUILD_LABEL}</span>
+        `;
+      }
+      
+      } catch (error) {
+        console.error("Initialization error:", error);
+        document.getElementById("loading").innerHTML = `
+          <div style="color: #f87171; max-width: 600px; text-align: left;">
+            <h2>Initialization Error</h2>
+            <pre style="background: rgba(0,0,0,0.5); padding: 16px; border-radius: 8px; overflow: auto; font-size: 12px;">${error.stack || error.message}</pre>
+            <p>Check console (F12) for details.</p>
+          </div>
+        `;
+      }
+    })();
+  </script>
+</body>
+</html>
