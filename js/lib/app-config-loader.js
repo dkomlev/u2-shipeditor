@@ -14,6 +14,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   
   const SESSION_STORAGE_KEY = "u2.flightTest.appConfig";
+  const LOCAL_STORAGE_KEY = "u2.flightTest.appConfig.local";
   const cloneValue =
     typeof structuredClone === "function"
       ? (value) => structuredClone(value)
@@ -121,7 +122,7 @@
    * @returns {Promise<Object>} Validated AppConfig
    */
   async function loadAppConfig(path = "./config/u2-appconfig.json") {
-    const sessionConfig = readSessionConfig();
+    const sessionConfig = readLauncherConfig();
     if (sessionConfig) {
       return sessionConfig;
     }
@@ -130,7 +131,7 @@
       const response = await fetch(path);
       if (!response.ok) {
         console.warn(`AppConfig not found at ${path}, using defaults`);
-        return structuredClone(DEFAULT_CONFIG);
+        return cloneValue(DEFAULT_CONFIG);
       }
       
       const raw = await response.json();
@@ -231,25 +232,38 @@
    * Get synchronous copy of default config (for testing)
    */
   function getDefaultConfig() {
-    return structuredClone(DEFAULT_CONFIG);
+    return cloneValue(DEFAULT_CONFIG);
   }
-
-  function readSessionConfig() {
-    if (typeof window === "undefined" || !window.sessionStorage) {
+  
+  function readLauncherConfig() {
+    if (typeof window === "undefined") {
       return null;
     }
-    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const stored =
+      readAndClear(window.sessionStorage, SESSION_STORAGE_KEY) ??
+      readAndClear(window.localStorage, LOCAL_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(stored);
+      return validateAndMerge(parsed);
+    } catch (error) {
+      console.warn("Failed to parse launcher AppConfig", error);
+      return null;
+    }
+  }
+
+  function readAndClear(storage, key) {
+    if (!storage) {
+      return null;
+    }
+    const raw = storage.getItem(key);
     if (!raw) {
       return null;
     }
-    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
-    try {
-      const parsed = JSON.parse(raw);
-      return validateAndMerge(parsed);
-    } catch (error) {
-      console.warn("Failed to parse session AppConfig", error);
-      return null;
-    }
+    storage.removeItem(key);
+    return raw;
   }
 
   function applyExtraKeys(source, target) {

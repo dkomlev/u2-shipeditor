@@ -2,7 +2,8 @@
 
 (function () {
   const STORAGE_KEY = "u2.selectedShip";
-  const FLIGHT_CONFIG_STORAGE_KEY = "u2.flightTest.appConfig";
+  const FLIGHT_CONFIG_SESSION_KEY = "u2.flightTest.appConfig";
+  const FLIGHT_CONFIG_LOCAL_KEY = "u2.flightTest.appConfig.local";
   const PRESETS = ["Balanced", "Sport", "Rally", "Muscle", "F1", "Industrial", "Truck", "Warship", "Liner", "Recon"];
   const SHIP_ADAPTER =
     (typeof window !== "undefined" && window.U2ShipAdapter) ||
@@ -467,15 +468,14 @@
 
     try {
       const payload = buildFlightTestAppConfig(state.current);
-      const handoff = persistFlightTestConfig(payload);
-      if (handoff) {
-        showStatus("Запускаем Flight Test с выбранным кораблём…", false);
-        window.location.href = "flight-test.html";
-      } else {
-        const filename = `u2-flight-test-${state.current.summary.id || "ship"}.json`;
-        downloadJson(payload, filename);
-        showStatus("Не удалось передать данные в стенд, скачан JSON.", true);
+      const channel = persistFlightTestConfig(payload);
+      if (!channel) {
+        showStatus("Не удалось передать данные в Flight Test (хранилище недоступно).", true);
+        return;
       }
+      const hint = channel === "local" ? "(через локальное хранилище)" : "";
+      showStatus(`Запускаем Flight Test ${hint}`.trim(), false);
+      window.location.href = "flight-test.html";
     } catch (error) {
       console.error(error);
       showStatus("Не удалось собрать AppConfig.", true);
@@ -547,32 +547,34 @@
       selected_ship: {
         id: summary.id,
         name: summary.name,
-        size_type: summary.size_type
+        size_type: summary.size_type,
+        path: selection.sourcePath,
+        source_kind: selection.sourceKind
       },
       ...shipReference
     };
   }
 
-  function downloadJson(data, filename) {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  function persistFlightTestConfig(payload) {
+    const serialized = JSON.stringify(payload);
+    if (tryStore(window.sessionStorage, FLIGHT_CONFIG_SESSION_KEY, serialized)) {
+      return "session";
+    }
+    if (tryStore(window.localStorage, FLIGHT_CONFIG_LOCAL_KEY, serialized)) {
+      return "local";
+    }
+    return null;
   }
 
-  function persistFlightTestConfig(payload) {
+  function tryStore(storage, key, value) {
+    if (!storage) {
+      return false;
+    }
     try {
-      if (typeof window === "undefined" || !window.sessionStorage) {
-        return false;
-      }
-      window.sessionStorage.setItem(FLIGHT_CONFIG_STORAGE_KEY, JSON.stringify(payload));
+      storage.setItem(key, value);
       return true;
     } catch (error) {
-      console.warn("Не удалось сохранить AppConfig в sessionStorage", error);
+      console.warn(`Не удалось сохранить ${key}:`, error);
       return false;
     }
   }

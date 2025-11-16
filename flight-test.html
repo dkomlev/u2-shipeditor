@@ -231,6 +231,7 @@
       const appConfig = await appConfigLoader.loadAppConfig();
       console.log("AppConfig loaded:", appConfig);
       const hasInlineShip = Boolean(appConfig.inline_ship);
+      const pixelsPerMeter = appConfig.render?.pixels_per_meter ?? 0.4;
 
       // Load ShipConfig
       let manifest = [];
@@ -296,6 +297,18 @@
       
       const summary = adapter.parseShipConfig(shipJson, shipPath);
       console.log("Ship summary:", summary.name);
+      const shipGeometry = normalizeGeometry(shipJson.geometry || summary.geometry);
+      let shipSpriteImage = null;
+      try {
+        shipSpriteImage = await loadShipSprite(summary.sprite);
+      } catch (error) {
+        console.warn("Failed to load ship sprite, falling back to marker.", error);
+      }
+      const shipVisual = {
+        sprite: shipSpriteImage,
+        geometry: shipGeometry,
+        hullRadius: shipGeometry.hull_radius_m ?? Math.max(shipGeometry.length_m, shipGeometry.width_m) * 0.5
+      };
 
       // Setup canvas
       console.log("Setting up canvas...");
@@ -308,8 +321,11 @@
       // Create simulation state
       console.log("Creating simulation state...");
       const state = core.createState({
-        mass_t: summary.mass_t ?? shipJson.mass_t ?? 1,
-        propulsion: shipJson.propulsion
+        mass_t: summary.mass_t ?? shipJson.mass?.dry_t ?? shipJson.mass_t ?? 1,
+        propulsion: shipJson.propulsion,
+        geometry: shipGeometry,
+        performance: shipJson.performance,
+        inertia_opt: shipJson.inertia_opt
       });
       console.log("State created:", state);
 
@@ -381,14 +397,25 @@
           asteroidLib.wrapAsteroids(asteroids, appConfig.world.bounds);
 
           // Check collisions
+          const shipCollider = buildShipCollider(state, shipVisual);
           const collisions = collisionLib.checkShipCollisions(
-            { position: state.position, radius: 20 },
+            shipCollider,
             asteroids,
             collisionMode
           );
 
           // Render
-          draw(ctx, canvas, state, asteroids, collisions, appConfig);
+          draw(ctx, canvas, state, asteroids, collisions, appConfig, shipVisual, pixelsPerMeter);
+          if (collisionOverlay) {
+            collisionLib.renderCollisionOverlay(
+              ctx,
+              shipCollider,
+              asteroids,
+              collisions,
+              state.camera || state,
+              pixelsPerMeter
+            );
+          }
           updateHUD(state, assistResult, normalizedInput, summary, appConfig, asteroids, collisions);
 
           requestAnimationFrame(loop);
@@ -406,49 +433,23 @@
       }
       requestAnimationFrame(loop);
 
-      function draw(ctx, canvas, state, asteroids, collisions, config) {
+      function draw(ctx, canvas, state, asteroids, collisions, config, shipVisual, scale) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Render grid (from sim-demo.html)
         if (config.render.grid?.enabled) {
-          drawGrid(ctx, canvas, state, config.render.grid);
+          drawGrid(ctx, canvas, state, config.render.grid, scale);
         }
 
         // Render asteroids first (background)
-        asteroidLib.renderAsteroids(ctx, asteroids, state.camera || state, 0.4);
-        
-        // Draw ship
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(-state.orientation);
-        
-        const shipColor = collisions.length > 0 ? "#f87171" : "#7af";
-        ctx.fillStyle = shipColor;
-        ctx.beginPath();
-        ctx.moveTo(26, 0);
-        ctx.lineTo(-20, 14);
-        ctx.lineTo(-20, -14);
-        ctx.closePath();
-        ctx.fill();
-        
-        ctx.restore();
+        asteroidLib.renderAsteroids(ctx, asteroids, state.camera || state, scale);
 
-        // Collision overlay (if enabled)
-        if (collisionOverlay) {
-          collisionLib.renderCollisionOverlay(
-            ctx,
-            { position: state.position, radius: 20 },
-            asteroids,
-            collisions,
-            state.camera || state,
-            0.4
-          );
-        }
+        drawShipSprite(ctx, canvas, state, collisions.length > 0, shipVisual, scale);
+
       }
 
-      function drawGrid(ctx, canvas, state, gridConfig) {
+      function drawGrid(ctx, canvas, state, gridConfig, scale = 0.4) {
         const cameraPos = state.camera?.position ?? state.position;
-        const scale = 0.4; // pixels per meter
         const spacingWorld = gridConfig.cell || 250; // meters
         const spacingPx = spacingWorld * scale;
         
@@ -505,6 +506,93 @@
         ctx.stroke();
 
         ctx.restore();
+      }
+
+      function drawShipSprite(ctx, canvas, state, hasCollisions, shipVisual, scale) {
+        const sprite = shipVisual.sprite;
+        const geometry = shipVisual.geometry;
+        const cameraPos = state.camera?.position ?? state.position;
+        const screenX = (state.position.x - cameraPos.x) * scale;
+        const screenY = -(state.position.y - cameraPos.y) * scale;
+        const lengthPx = (geometry.length_m ?? 40) * scale;
+        const widthPx = (geometry.width_m ?? 20) * scale;
+
+        ctx.save();
+        ctx.translate(canvas.width / 2 + screenX, canvas.height / 2 + screenY);
+        ctx.rotate(-state.orientation);
+
+        if (sprite) {
+          const previousFilter = ctx.filter;
+          const previousAlpha = ctx.globalAlpha;
+          if (hasCollisions) {
+            ctx.filter = "drop-shadow(0 0 12px rgba(248,113,113,0.85))";
+            ctx.globalAlpha = 0.9;
+          }
+          ctx.drawImage(sprite, -lengthPx / 2, -widthPx / 2, lengthPx, widthPx);
+          ctx.filter = previousFilter;
+          ctx.globalAlpha = previousAlpha;
+        } else {
+          const nose = lengthPx / 2;
+          const tail = -lengthPx / 2;
+          const halfSpan = widthPx / 2;
+          ctx.fillStyle = hasCollisions ? "#f87171" : "#7af";
+          ctx.beginPath();
+          ctx.moveTo(nose, 0);
+          ctx.lineTo(tail, halfSpan);
+          ctx.lineTo(tail, -halfSpan);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      function buildShipCollider(state, shipVisual) {
+        const geometry = shipVisual.geometry;
+        const padding = Math.max(shipVisual.hullRadius * 0.1, 2);
+        const halfLength = (geometry.length_m ?? 40) / 2 + padding;
+        const halfWidth = (geometry.width_m ?? 20) / 2 + padding;
+        return {
+          position: { x: state.position.x, y: state.position.y },
+          radius: shipVisual.hullRadius || Math.max(halfLength, halfWidth),
+          bounds: {
+            minX: state.position.x - halfLength,
+            maxX: state.position.x + halfLength,
+            minY: state.position.y - halfWidth,
+            maxY: state.position.y + halfWidth
+          }
+        };
+      }
+
+      function normalizeGeometry(raw = {}) {
+        const length = clampNumber(raw.length_m, 5, 5_000, 40);
+        const width = clampNumber(raw.width_m ?? length * 0.4, 5, 3_000, length * 0.4);
+        const height = clampNumber(raw.height_m ?? width * 0.35, 1, 2_000, width * 0.35);
+        const hullRadius = clampNumber(raw.hull_radius_m ?? Math.max(length, width) * 0.5, 5, 5_000, Math.max(length, width) * 0.5);
+        return {
+          length_m: length,
+          width_m: width,
+          height_m: height,
+          hull_radius_m: hullRadius
+        };
+      }
+
+      function clampNumber(value, min, max, fallback = min) {
+        const numeric = typeof value === "number" && !Number.isNaN(value) ? value : fallback;
+        return Math.min(Math.max(numeric, min), max);
+      }
+
+      function loadShipSprite(spriteMeta) {
+        if (!spriteMeta?.value) {
+          return Promise.resolve(null);
+        }
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.crossOrigin = "anonymous";
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = spriteMeta.kind === "path" ? encodeURI(spriteMeta.value) : spriteMeta.value;
+        });
       }
 
       function updateHUD(state, assistResult, input, summary, config, asteroids, collisions) {
