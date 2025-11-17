@@ -141,7 +141,29 @@
 [0.5.3]: https://github.com/dkomlev/u2-shipeditor/releases/tag/v0.5.3
 # Universe Unlimited - Changelog
 
-## Version 0.7.3 Build 001 (Current)
+## Version 0.7.5 Build 007 (Current)
+
+### Input & Controls
+
+- Autopilot is now enabled by default in Flight Test and AppConfig, with initialization options that accept explicit autopilot and coupled-state flags.
+- Manual control actions (axes, brake, boost) reliably disable autopilot in both the UI and simulation logic, preventing unexpected automatic corrections while the player is flying.
+- Keyboard handling is more layout-independent (e.g., WASD/QE by key code and character), making controls more robust across different keyboard layouts.
+
+### Flight Test & HUD
+
+- Added interactive zoom controls to the Flight Test HUD with buttons and keyboard shortcuts; the current zoom level is displayed alongside environment info.
+- Introduced initial zoom percent overrides and hull radius calculation so ships start framed at a sensible scale when entering the simulation.
+- Improved ship rendering and geometry handling in `flight-test.html`, including sprite support and more accurate visuals.
+
+### Config Handoff & Infrastructure
+
+- Enhanced AppConfig handoff between the editor and Flight Test via `sessionStorage`/`localStorage`, reducing friction when testing ships directly from the editor.
+- Updated `app-config-loader` and `home.js` to work with the new handoff flow and to normalize geometry handling.
+- Documentation and update scripts refreshed to reflect the new version (`0.7.5`) and workflow.
+
+---
+
+## Version 0.7.3 Build 001
 
 ### Build & Telemetry
 
