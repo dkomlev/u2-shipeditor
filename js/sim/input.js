@@ -95,8 +95,13 @@
       const brake = isPressed(bindings.brake);
       const boost = isPressed(bindings.boost);
 
+      // Любой осевой ввод ИЛИ тормоз/boost считаем ручным управлением и отключаем автопилот
       const manualInput =
-        Math.abs(thrustForward) > 0.05 || Math.abs(thrustRight) > 0.05 || Math.abs(clampedTorque) > 0.05;
+        Math.abs(thrustForward) > 0.05 ||
+        Math.abs(thrustRight) > 0.05 ||
+        Math.abs(clampedTorque) > 0.05 ||
+        brake ||
+        boost;
 
       if (manualInput) {
         state.autopilot = false;
@@ -145,18 +150,37 @@
     const result = {};
     Object.keys(DEFAULT_BINDINGS).forEach((key) => {
       const override = overrides[key];
+      let tokens = [];
       if (Array.isArray(override)) {
-        result[key] = override.map(normalizeKey).filter(Boolean);
+        tokens = override.flatMap(expandBindingToken);
       } else if (typeof override === "string") {
-        result[key] = [normalizeKey(override)].filter(Boolean);
+        tokens = expandBindingToken(override);
       } else {
-        result[key] = DEFAULT_BINDINGS[key];
+        tokens = DEFAULT_BINDINGS[key];
       }
-      if (!result[key]?.length) {
-        result[key] = DEFAULT_BINDINGS[key];
+      if (!tokens || !tokens.length) {
+        tokens = DEFAULT_BINDINGS[key];
       }
+      result[key] = tokens;
     });
     return result;
+  }
+
+  function expandBindingToken(raw) {
+    const out = [];
+    const v = normalizeKey(raw);
+    if (!v) {
+      return out;
+    }
+    out.push(v);
+    // For single-letter bindings (WASD/QE etc.) also bind by code (KeyW/KeyA/...),
+    // so управление работает независимо от раскладки клавиатуры.
+    if (v.length === 1 && v >= "a" && v <= "z") {
+      out.push(`key${v}`);
+    } else if (v === "space") {
+      out.push(" ");
+    }
+    return out;
   }
 
   function clamp(value, min, max) {

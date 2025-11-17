@@ -407,6 +407,19 @@
 
       // Additional key bindings for FlightTest
       document.addEventListener("keydown", (e) => {
+        // Любое управление (оси/тормоз/boost) должно считатьcя ручным и выключать автопилот
+        const code = e.code || "";
+        const key = e.key || "";
+        const isAxisKey =
+          code === "KeyW" || code === "KeyA" || code === "KeyS" || code === "KeyD" ||
+          code === "ArrowUp" || code === "ArrowDown" || code === "ArrowLeft" || code === "ArrowRight";
+        const isYawKey = code === "KeyQ" || code === "KeyE";
+        const isBrakeKey = key === " " || code === "Space";
+        const isBoostKey = code === "ShiftLeft" || code === "ShiftRight";
+        if (isAxisKey || isYawKey || isBrakeKey || isBoostKey) {
+          input.setAutopilot(false);
+        }
+
         if (e.key === "-" || e.key === "_") {
           e.preventDefault();
           e.stopPropagation();

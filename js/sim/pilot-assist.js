@@ -29,12 +29,21 @@
     function update(state, input, env) {
       const dt = env.dt_sec ?? 1 / 60;
       const modeCoupled = !!input.modeCoupled;
-      const autopilot = !!input.autopilot;
+
       const command = {
         thrustForward: clamp(input.thrustForward ?? 0, -1, 1),
         thrustRight: clamp(input.thrustRight ?? 0, -1, 1),
         torque: clamp(input.torque ?? 0, -1, 1)
       };
+
+      const hasManualAxes =
+        Math.abs(command.thrustForward) > 0.05 ||
+        Math.abs(command.thrustRight) > 0.05 ||
+        Math.abs(command.torque) > 0.05;
+      const brakeActive = !!input.brake;
+      const boostActive = !!input.boost;
+      const autopilotRequested = !!input.autopilot;
+      const autopilotActive = autopilotRequested && !hasManualAxes && !brakeActive && !boostActive;
 
       if (boostCooldownTimer > 0) {
         boostCooldownTimer -= dt;
@@ -54,7 +63,7 @@
         };
       }
 
-      if (autopilot) {
+      if (autopilotActive) {
         randomTimer -= dt;
         if (randomTimer <= 0) {
           randomVec = {
@@ -130,7 +139,7 @@
       return {
         command,
         mode: modeCoupled ? "Coupled" : "Decoupled",
-        autopilot,
+        autopilot: autopilotActive,
         brake: false,
         telemetry: telemetry || buildTelemetry(state, summary.assist, env)
       };
