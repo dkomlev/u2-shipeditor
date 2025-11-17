@@ -1,0 +1,80 @@
+      const info = (typeof window !== "undefined" && window.U2BuildInfo) || {};
+      const buildId = info.buildId || (typeof info.build === "number" ? info.build.toString().padStart(3, "0") : "000");
+      const version = info.version || "0.0.0";
+      const label = info.label || `v${version} build ${buildId}`;
+      const el = document.getElementById("loadingStatus");
+      if (el) {
+        el.textContent = `Loading FlightTest ${label}...`;
+      }
+    })();
+  </script>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="zoomControls" aria-label="Zoom controls">
+    <button type="button" data-zoom="out" aria-label="Zoom out">-</button>
+    <span id="zoomValue">100%</span>
+    <button type="button" data-zoom="in" aria-label="Zoom in">=</button>
+  </div>
+
+  <!-- HUD Panels -->
+  <div id="hudTopLeft" class="hud-panel">
+    <div class="hud-title">SHIP STATUS</div>
+    <div id="shipStatus"></div>
+  </div>
+
+  <div id="hudTopRight" class="hud-panel">
+    <div class="hud-title">FLIGHT MODE</div>
+    <div id="flightMode"></div>
+  </div>
+
+  <div id="hudBottomLeft" class="hud-panel">
+    <div class="hud-title">PHYSICS</div>
+    <div id="physicsInfo"></div>
+  </div>
+
+  <div id="hudBottomRight" class="hud-panel">
+    <div class="hud-title">ENVIRONMENT</div>
+    <div id="envInfo"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/lib/app-config-loader.js"></script>
+  <script src="js/lib/ship-adapter.js"></script>
+  <script src="js/lib/resources.js"></script>
+  <script src="js/sim/relativity.js"></script>
+  <script src="js/sim/core.js"></script>
+  <script src="js/sim/input.js"></script>
+  <script src="js/sim/coupled-controller.js"></script>
+  <script src="js/sim/pilot-assist.js"></script>
+  <script src="js/sim/asteroids.js"></script>
+  <script src="js/sim/collision.js"></script>
+  <script>
+    (async function () {
+      const buildInfo = (typeof window !== "undefined" && window.U2BuildInfo) || {
+        version: "0.0.0",
+        build: 0,
+        buildId: "000",
+        label: "v0.0.0 build 000"
+      };
+      const APP_VERSION = buildInfo.version || "0.0.0";
+      const BUILD_NUMBER = buildInfo.buildId || (typeof buildInfo.build === "number" ? buildInfo.build.toString().padStart(3, "0") : "000");
+      const BUILD_LABEL = buildInfo.label || `v${APP_VERSION} build ${BUILD_NUMBER}`;
+      try {
+        console.log(`FlightTest ${BUILD_LABEL}: Starting initialization...`);
+      
+        const appConfigLoader = window.U2AppConfigLoader;
+        const resources = window.U2Resources;
+        const adapter = window.U2ShipAdapter;
+        const core = window.U2SimCore;
+        const inputLib = window.U2InputController;
+        const assistLib = window.U2PilotAssist;
+        const asteroidLib = window.U2AsteroidGenerator;
+        const collisionLib = window.U2CollisionDetector;
+
+      console.log("Checking dependencies:", {
+        appConfigLoader: !!appConfigLoader,
+        resources: !!resources,
+        adapter: !!adapter,
+        core: !!core,
+        inputLib: !!inputLib,

@@ -1,6 +1,6 @@
-// U2 Nominals v0.7.4 (decoupled) — no SCM/Vmax; uses accel + strafe + omega caps; propulsion derived
+// U2 Nominals v0.7.5 (decoupled) — no SCM/Vmax; uses accel + strafe + omega caps; propulsion derived
 // Auto-generated
-export const NOMINALS_VERSION = "0.7.4";
+export const NOMINALS_VERSION = "0.7.5";
 export const NOMINALS_MODE = "decoupled";
 
 export const NOMINALS = {

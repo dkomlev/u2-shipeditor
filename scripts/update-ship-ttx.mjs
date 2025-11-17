@@ -101,7 +101,7 @@ function main() {
       updated += 1;
     }
   });
-  console.log(`Updated ${updated} ship configs with v0.7.4 nominal TTX.`);
+  console.log(`Updated ${updated} ship configs with v0.7.5 nominal TTX.`);
 }
 
 main();
